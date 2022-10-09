@@ -1,0 +1,28 @@
+/* You can add global styles to this file, and also import other style files */
+
+body {
+    font-family: "Helvetica", sans-serif;
+    background: black;
+    color: #ccc;
+    margin: 0 1em;
+    padding: 0;
+}
+
+.logo {
+    color: white;
+    font-weight: 700;
+    font-size: 15px;
+    width: fit-content;
+    display: inline-block;
+    margin: 1em 1em 1em 0;
+    padding: 0;
+}
+
+.spacer {
+    flex-grow: 1;
+}
+
+a {
+    color: white;
+    text-decoration: underline;
+}
