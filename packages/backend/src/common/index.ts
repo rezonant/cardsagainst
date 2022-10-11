@@ -14,7 +14,8 @@ export interface Round {
     host: Player;
     players: Player[];
     answers: Answer[];
-    winner: Player;
+    winner?: Player;
+    winningAnswer?: Answer;
 }
 
 export interface AnswerCard {

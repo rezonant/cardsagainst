@@ -1,20 +1,56 @@
+:host {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;
+}
 
 .playfield {
     display: flex;
     flex-direction: row;
-    align-content: space-around;
+    align-items: space-around;
     justify-content: center;
 
     .card {
+        pointer-events: initial;
         transition: all 0.5s;
         aspect-ratio: 242 / 355;
-        width: 10em;
         border: 1px solid white;
         border-radius: 8px;
         display: inline-block;
-        padding: 1em;
-        font-size: 20pt;
+        padding: 20px;
+        font-size: calc(4vh - 4px);
+        min-height: 0;
+        line-height: 0.9em;
+        text-decoration: none;
+        position: relative;
 
+        button.remove {
+            position: absolute;
+            top: 0.5em;
+            right: 0.5em;
+        }
+
+        button.bottom {
+            position: absolute;
+            bottom: 0.5em;
+            left: 0.5em;
+            right: 0.5em;
+            width: auto;    
+        }
+
+        &.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        // hyphens: auto;
+        // word-break: break-word;
+        // hyphenate-character: "-";
         &.prompt {
             background: black;
             color: white;
@@ -23,9 +59,94 @@
         &.answer {
             background: white;
             color: black;
+            width: 15vw;
         }
 
         animation: be-played 0.5s;
+    }
+
+    &.shared {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        .card {
+            height: 37vh;
+            width: auto;
+        }
+        .card:first-child {
+            transform: rotateZ(-12deg);
+            transform-origin: bottom right;
+        }
+        .card:nth-child(2) {
+            position: relative;
+            left: -10vw;
+            transform: rotateZ(6deg);
+            transform-origin: bottom left;
+            box-shadow: 0px 0px 5px black;
+            z-index: 1;
+        }
+        .card:nth-child(3) {
+            position: relative;
+            left: -20vw;
+            transform: rotateZ(24deg);
+            transform-origin: bottom left;
+            box-shadow: 0px 0px 5px black;
+            z-index: 2;
+        }
+        .card:nth-child(4) {
+            position: relative;
+            left: -32vw;
+            transform: rotateZ(55deg);
+            transform-origin: bottom left;
+            box-shadow: 0px 0px 5px black;
+            z-index: 3;
+        }
+        .card:last-child:first-child {
+            transform: rotateZ(2deg) !important;
+        }
+    }
+
+    &.hand {
+        gap: 1em;
+        margin-bottom: 1em;
+        
+        .card {
+            flex-grow: initial;
+            flex-shrink: initial;
+            padding: 1vw;
+            font-size: min(3vh, 3vw);
+            max-width: 6em;
+        }
+    }
+
+    &.judging {
+        > .card:first-child {
+            height: 37vh;
+            width: auto;
+            transform: rotateZ(2deg) !important;
+        }
+
+        .answer-sets {
+            margin-left: 1em;
+            display: flex;
+            flex-direction: column;
+            gap: 1em;
+
+            .card.answer {
+                width: fit-content;
+                height: fit-content;
+                aspect-ratio: initial;
+                flex-grow: 1;
+                font-size: 14pt;
+                padding-bottom: 3em;
+
+                &.unrevealed {
+                    opacity: 0.9;
+                }
+            }
+        }
     }
 
     @keyframes be-played {
@@ -37,23 +158,59 @@
             opacity: 1;
         }
     }
+}
 
+:host {
+    @media (orientation: landscape) and (max-height: 450px) {
+        flex-direction: row;
 
+        .playfield {
+            align-content: initial;
+            align-items: center;
 
-    &:not(.playfield-hand) {
-        .card:first-child {
-            transform: rotateZ(-6deg);
-            transform-origin: bottom right;
-        }
-        .card:nth-child(2) {
-            position: relative;
-            left: -10vw;
-            transform: rotateZ(6deg);
-            transform-origin: bottom left;
-        }
-        .card:last-child:first-child {
-            transform: rotateZ(2deg) !important;
+            &.shared {
+                justify-content: flex-end;
+                margin-right: 2em;
+                flex-grow: 0;
+                margin-left: 10em;
+                .card.prompt {
+                    height: 45vh;
+                    font-size: 5vh;
+                }
+            }
+
+            &.hand {
+                margin-bottom: 0;
+                margin-right: 1em;
+            }
         }
     }
-    
+
+    @media (orientation: portrait) and (max-width: 450px) {
+        .playfield {
+            &.shared {
+                margin-top: 5em;
+
+                .card.prompt {
+                    height: 25vh;
+                    font-size: 2vh;
+                }
+            }
+            &.hand {
+                flex-wrap: wrap;
+
+                .card {
+                    min-width: 25vw;
+                }
+            }
+        }
+    }
+}
+
+.message {
+    text-align: center;
+    font-size: 16pt;
+    margin: 1em;
+    z-index: 100;
+    pointer-events: initial;
 }

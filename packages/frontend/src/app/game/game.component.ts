@@ -1,7 +1,7 @@
 import { Component } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
 import { RPCSession } from "@astronautlabs/webrpc";
-import { AnswerCard, PlayerSession, Round, Session } from "@cardsagainst/backend";
+import { Answer, AnswerCard, PlayerSession, Round, Session } from "@cardsagainst/backend";
 import { GameService } from "../game.service";
 import { Card, Player, timeout } from "../types";
 import { v4 as uuid } from 'uuid';
@@ -166,6 +166,12 @@ export class GameComponent {
                 this.router.navigateByUrl('/');
             }
             this.session.roundChanged.subscribe(round => {
+                let lastPhase = this.round?.phase;
+
+                if (lastPhase !== round.phase) {            
+                    this.pickedCards = [];
+                }
+
                 this.round = round
                 console.log(`Round updated:`);
                 console.dir(this.round);
@@ -180,7 +186,12 @@ export class GameComponent {
             }
             console.log(`Joined game successfully.`);
 
-            this.player.cardsChanged.subscribe(cards => this.hand = cards);
+            this.player.cardsChanged.subscribe(cards => {
+                this.hand = cards;
+                
+                console.log(`Player hand changed:`);
+                console.dir(this.hand);
+            });
             this.hand = await this.player.getHand()
             console.log(`Player hand:`);
             console.dir(this.hand);
@@ -207,8 +218,75 @@ export class GameComponent {
 
     currentPlayer = 0;
 
-    onCardClicked(card: AnswerCard) {
+    pickedCards: AnswerCard[] = [];
 
+    get tsar() {
+        if (!this.round)
+            return null;
+        return this.round.players.find(x => x.id === this.round.tsarPlayerId);
+    }
+
+    async startNextRound() {
+        await this.player.startNextRound();
+    }
+
+    get isHost() {
+        return this.round.host.id === this.playerId;
+    }
+
+    get allRevealed() {
+        return !this.round.answers.some(answer => answer.answerCards.some(card => !card.text));
+    }
+    get imJudging() {
+        return this.round.tsarPlayerId === this.playerId;
+    }
+
+    isLastCardOfAnswer(answer: Answer, card: AnswerCard) {
+        return answer.answerCards[answer.answerCards.length - 1] === card;
+    }
+
+    get winningMessage() {
+        return this.round.winner.id === this.playerId ? `You won!` : `${this.round.winner.displayName} won!`;
+    }
+
+    get judgingMessage() { 
+        return this.imJudging ? 'You are judging.' : `${this.tsar.displayName} is judging.`;
+    }
+
+    async revealAnswer(answer: Answer) {
+        await this.player.revealAnswer(answer);
+    }
+
+    pickCard(card: AnswerCard) {
+        this.pickedCards.push(card);
+    }
+
+    async pickAnswer(answer: Answer) {
+        await this.player.pickAnswer(answer);
+    }
+
+    async submitAnswer() {
+        await this.player.submitAnswer(this.pickedCards);
+        //this.pickedCards = [];
+    }
+
+    get answerSets() {
+        return this.round.answers.concat(this.round.answers);
+    }
+
+    isLastPicked(card: AnswerCard) {
+        return this.pickedCards[this.pickedCards.length - 1] === card;
+    }
+
+    isPicked(card: AnswerCard) {
+        return this.pickedCards.includes(card);
+    }
+
+    get allPicked() {
+        return this.pickedCards.length >= this.round?.pick;
+    }
+    unpickCard(card: AnswerCard) {
+        this.pickedCards = this.pickedCards.filter(x => x !== card);
     }
 
     dealCards(amount: number = 10) {

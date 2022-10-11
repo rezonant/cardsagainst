@@ -22,6 +22,7 @@ html, body { height: 100%; }
     animation: logo-intro 1s;
     transform-origin: top left;
     animation-fill-mode: forwards;
+    line-height: 1em;
 
     i {
         display: block;
@@ -29,8 +30,8 @@ html, body { height: 100%; }
     }
 }
 
-$big-font: 22vw;
-$small-font: 18pt;
+$big-font: 10vw;
+$small-font: 15pt;
 
 @keyframes logo-intro {
     0% {

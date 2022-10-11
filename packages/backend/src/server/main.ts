@@ -66,8 +66,6 @@ export class PlayerSession extends Interface.PlayerSession {
     @webrpc.Method()
     override async submitAnswer(answerCards: Interface.AnswerCard[]): Promise<void> {
         this.session.submitPlayerAnswer(this, answerCards);
-        this.answerCards = this.answerCards.filter(x => answerCards.some(y => y.id !== x.id));
-        this._cardsChanged.next(this.answerCards);
     }
 
     @webrpc.Method()
@@ -82,6 +80,13 @@ export class PlayerSession extends Interface.PlayerSession {
 
     addCard(card: Interface.AnswerCard) {
         this.answerCards.push(card);
+    }
+
+    removeCards(cards: Interface.AnswerCard[]) {
+        this.answerCards = this.answerCards.filter(x => cards.some(y => y.id !== x.id));
+    }
+    
+    sendCards() {
         this._cardsChanged.next(this.answerCards);
     }
 }
@@ -101,7 +106,7 @@ export class Session extends Interface.Session {
 
     playerMap = new Map<string, PlayerSession>();
     round: Interface.Round;
-    pendingAnswers: PendingAnswer[];
+    pendingAnswers: PendingAnswer[] = [];
     host: PlayerSession;
 
     get players() {
@@ -138,6 +143,7 @@ export class Session extends Interface.Session {
     startRound() {
         let prompt = this.pickPrompt();
 
+        this.pendingAnswers = [];
         console.log(`[CAH] Round starting: ${prompt.text}`);
         this.round = {
             host: this.host.player,
@@ -170,6 +176,7 @@ export class Session extends Interface.Session {
         let pendingAnswer = this.pendingAnswers.find(x => x.player === player);
         this.round.phase = 'finished';
         this.round.winner = pendingAnswer.player.player;
+        this.round.winningAnswer = answer;
         this._roundChanged.next(this.round);
     }
 
@@ -177,13 +184,17 @@ export class Session extends Interface.Session {
         if (this.pendingAnswers.some(x => x.player === player))
             throw new Error(`You've already submitted an answer`);
 
+        console.log(`[CAH] Player ${player.player.displayName} submitted an answer.`);
         let id = uuid();
         this.pendingAnswers.push({ id, player, answerCards });
-        this.round.answers.push({ id, answerCards: undefined });
+        this.round.answers.push({ id, answerCards: answerCards.map(x => ({ id: '', text: '' })) });
         this._roundChanged.next(this.round);
+        
+        player.removeCards(answerCards);
         this.dealCards(player);
 
         if (!this.players.some(x => this.hasAnswered(x))) {
+            console.log(`[CAH] Entering judging period.`);
             this.round.phase = 'judging';
             this._roundChanged.next(this.round);
         }
@@ -223,12 +234,17 @@ export class Session extends Interface.Session {
     availableAnswerCards: Interface.AnswerCard[];
 
     dealCards(player: PlayerSession) {
+        let dealt = 0;
         while (player.answerCards.length < 5) {
             let index = Math.random() * this.availableAnswerCards.length | 0;
             let card = this.availableAnswerCards[index];
             player.addCard(card);
+            dealt += 1;
             this.availableAnswerCards.splice(index, 1);
         }
+
+        console.log(`[CAH] Dealt ${dealt} cards to ${player.player.displayName}. Player now has ${player.answerCards.length} cards.`);
+        player.sendCards();
     }
 }
 
