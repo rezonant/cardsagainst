@@ -168,11 +168,12 @@ export class GameComponent {
             this.session.roundChanged.subscribe(round => {
                 let lastPhase = this.round?.phase;
 
-                if (lastPhase !== round.phase) {            
+                if (lastPhase !== round.phase && round.phase === 'finished') {            
                     this.pickedCards = [];
                 }
 
-                this.round = round
+                this.round = round;
+
                 console.log(`Round updated:`);
                 console.dir(this.round);
             });
@@ -220,10 +221,29 @@ export class GameComponent {
 
     pickedCards: AnswerCard[] = [];
 
+    get unansweredPlayers() {
+        if (!this.round)
+            return [];
+        return this.round.players.filter(x => this.round.answers.some(y => y.id === x.id));
+    }
+
+    get unansweredPlayerSummary() {
+        return this.unansweredPlayers.map(x => x.displayName).join(', ');
+    }
+
+    get hasVoted() {
+        if (!this.round)
+            return false;
+        return this.round.answers.find(x => x.id === this.playerId);
+    }
     get tsar() {
         if (!this.round)
             return null;
         return this.round.players.find(x => x.id === this.round.tsarPlayerId);
+    }
+
+    get isTsar() {
+        return this.tsar?.id === this.playerId;
     }
 
     async startNextRound() {
@@ -246,10 +266,14 @@ export class GameComponent {
     }
 
     get winningMessage() {
+        if (!this.round)
+            return '';
         return this.round.winner.id === this.playerId ? `You won!` : `${this.round.winner.displayName} won!`;
     }
 
     get judgingMessage() { 
+        if (!this.round)
+            return '';
         return this.imJudging ? 'You are judging.' : `${this.tsar.displayName} is judging.`;
     }
 
@@ -271,7 +295,7 @@ export class GameComponent {
     }
 
     get answerSets() {
-        return this.round.answers.concat(this.round.answers);
+        return this.round.answers;
     }
 
     isLastPicked(card: AnswerCard) {

@@ -83,7 +83,7 @@ export class PlayerSession extends Interface.PlayerSession {
     }
 
     removeCards(cards: Interface.AnswerCard[]) {
-        this.answerCards = this.answerCards.filter(x => cards.some(y => y.id !== x.id));
+        this.answerCards = this.answerCards.filter(x => !cards.some(y => y.id === x.id));
     }
     
     sendCards() {
@@ -124,7 +124,7 @@ export class Session extends Interface.Session {
     startNextRound(player: PlayerSession) {
         if (this.round.phase !== 'finished')
             throw new Error(`The current round isn't finished yet!`);
-        if (this.round.host.id !== player.player.id)
+        if (this.round.tsarPlayerId !== player.player.id)
             throw new Error(`You must be the host to start the next round`);
 
         this.startRound();
@@ -156,6 +156,9 @@ export class Session extends Interface.Session {
             winner: undefined
         }
         this._roundChanged.next(this.round);
+
+        for (let player of this.players)
+            this.dealCards(player);
     }
 
     async revealAnswer(player: PlayerSession, revealedAnswer: Interface.Answer) {
@@ -185,18 +188,24 @@ export class Session extends Interface.Session {
             throw new Error(`You've already submitted an answer`);
 
         console.log(`[CAH] Player ${player.player.displayName} submitted an answer.`);
-        let id = uuid();
+        
+        let id = player.player.id;
         this.pendingAnswers.push({ id, player, answerCards });
         this.round.answers.push({ id, answerCards: answerCards.map(x => ({ id: '', text: '' })) });
+        this.round.answers.sort((a, b) => Math.random() > 0.5 ? 1 : -1);
         this._roundChanged.next(this.round);
         
         player.removeCards(answerCards);
-        this.dealCards(player);
+        player.sendCards();
 
-        if (!this.players.some(x => this.hasAnswered(x))) {
+        let unansweredPlayers = this.players.filter(x => !this.hasAnswered(x));
+
+        if (unansweredPlayers.length === 0) {
             console.log(`[CAH] Entering judging period.`);
             this.round.phase = 'judging';
             this._roundChanged.next(this.round);
+        } else {
+            console.log(`[CAH] Waiting on ${unansweredPlayers.length} players (${unansweredPlayers.map(x => x.player.displayName).join(', ')})`);
         }
     }
     
@@ -226,6 +235,9 @@ export class Session extends Interface.Session {
         if (firstPlayer) {
             this.host = session;
             this.startRound();
+        } else {
+            this.round.players = this.players.map(x => x.player);
+            this._roundChanged.next(this.round);
         }
     
         return session;
@@ -263,6 +275,7 @@ export class CardsAgainstService extends Interface.CardsAgainstService {
             this.availableAnswers.push(...set.white.map(x => ({ id: uuid(), ...x })));
         }
 
+        this.availablePrompts = this.availablePrompts.filter(x => x.pick > 1);
         console.log(`Loaded ${this.availablePrompts.length} prompts and ${this.availableAnswers.length} answers.`);
     }
 

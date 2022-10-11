@@ -134,16 +134,23 @@
             flex-direction: column;
             gap: 1em;
 
-            .card.answer {
-                width: fit-content;
-                height: fit-content;
-                aspect-ratio: initial;
-                flex-grow: 1;
-                font-size: 14pt;
-                padding-bottom: 3em;
+            .answer-set {
+                display: flex;
+                gap: 1em;
+                background-color: #111;
+                border: 1px solid #666;
+                padding: 1em;
+                border-radius: 8px;
+                
+                .card.answer {
+                    width: 5em;
+                    flex-grow: 1;
+                    font-size: 14pt;
+                    padding-bottom: 3em;
 
-                &.unrevealed {
-                    opacity: 0.9;
+                    &.unrevealed {
+                        opacity: 0.9;
+                    }
                 }
             }
         }

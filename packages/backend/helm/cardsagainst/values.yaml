@@ -1,0 +1,5 @@
+cardsagainst:
+  registry: registry.k8s.rezonant.dev
+  registryCreds: registry-creds
+  env: production
+  domain: cardsagainst-backend.rezonant.dev

@@ -13,9 +13,16 @@
                 </button>
                 {{answer.text}}
 
-                <button class="bottom" mat-raised-button *ngIf="isLastPicked(answer) && allPicked" color="primary" (click)="submitAnswer()">
-                    Submit Answer
-                </button>
+                <ng-container *ngIf="hasVoted">
+                    <button class="bottom" [disabled]="true" mat-raised-button *ngIf="isLastPicked(answer) && allPicked" color="primary">
+                        Waiting for {{unansweredPlayerSummary}}
+                    </button>
+                </ng-container>
+                <ng-container *ngIf="!hasVoted">
+                    <button class="bottom" mat-raised-button *ngIf="isLastPicked(answer) && allPicked" color="primary" (click)="submitAnswer()">
+                        Submit Answer
+                    </button>
+                </ng-container>
             </div>
         </div>
 
@@ -39,12 +46,14 @@
                     <div class="card answer" *ngFor="let answerCard of answer.answerCards" [class.unrevealed]="answerCard.text === ''">
                         {{answerCard.text}}
 
-                        <button class="bottom" mat-raised-button *ngIf="isLastCardOfAnswer(answer, answerCard) && allRevealed" color="primary" (click)="pickAnswer(answer)">
-                            Pick
-                        </button>
-                        <button class="bottom" mat-raised-button *ngIf="!answerCard.text" color="primary" (click)="revealAnswer(answer)">
-                            Reveal
-                        </button>
+                        <ng-container *ngIf="isTsar">
+                            <button class="bottom" mat-raised-button *ngIf="isLastCardOfAnswer(answer, answerCard) && allRevealed" color="primary" (click)="pickAnswer(answer)">
+                                Pick
+                            </button>
+                            <button class="bottom" mat-raised-button *ngIf="!answerCard.text" color="primary" (click)="revealAnswer(answer)">
+                                Reveal
+                            </button>
+                        </ng-container>
                     </div>
                 </div>
             </div>
@@ -54,12 +63,12 @@
     <ng-container *ngIf="round.phase === 'finished'">
         <div class="message">
             {{winningMessage}}
-            <button mat-raised-button color="primary" [disabled]="!isHost" (click)="startNextRound()">
-                <ng-container *ngIf="isHost">
+            <button mat-raised-button color="primary" [disabled]="!isTsar" (click)="startNextRound()">
+                <ng-container *ngIf="isTsar">
                     Start next round
                 </ng-container>
-                <ng-container *ngIf="!isHost">
-                    Waiting for host to start round...
+                <ng-container *ngIf="!isTsar">
+                    Waiting for next round...
                 </ng-container>
             </button>
         </div>
