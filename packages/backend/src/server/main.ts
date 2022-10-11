@@ -37,6 +37,24 @@ export class PlayerSession extends Interface.PlayerSession {
         super();
     }
 
+    private connections = [];
+    private leftTimeout;
+    addConnection(session: RPCSession) {
+        this.connections.push(session);
+
+        clearTimeout(this.leftTimeout);
+
+        (session.channel as SocketChannel).socket.addEventListener('close', () => {
+            this.connections = this.connections.filter(x => x !== session);
+            if (this.connections.length === 0) {
+                this.leftTimeout = setTimeout(() => {
+                    console.log(`Player ${this.player.id} has timed out.`);
+                    this.session.removePlayer(this);
+                }, 1000 * 30);
+            }
+        });
+    }
+
     private _judgementRequested = new Subject<Interface.JudgementRequest>();
     private _judgementRequested$ = this._judgementRequested.asObservable();
     private _cardsChanged = new Subject<Interface.AnswerCard[]>();
@@ -119,6 +137,25 @@ export class Session extends Interface.Session {
     @webrpc.Event()
     get roundChanged(): Observable<Interface.Round> {
         return this._roundChanged$;
+    }
+
+    removePlayer(player: PlayerSession) {
+        this.playerMap.delete(player.player.id);
+        if (this.round) {
+            this.round.players = this.round.players.filter(x => x.id !== player.player.id);
+            if (this.round.tsarPlayerId === player.player.id) {
+                this.round.tsarPlayerId = this.round.players[this.tsarPlayerIndex = this.tsarPlayerIndex % this.round.players.length].id;
+            }
+
+            let unansweredPlayers = this.players.filter(x => !this.hasAnswered(x));
+
+            if (this.round.phase === 'answering' && unansweredPlayers.length === 0) {
+                this.round.phase = 'judging';
+                this._roundChanged.next(this.round);
+            }
+
+            this._roundChanged.next(this.round);
+        }
     }
 
     startNextRound(player: PlayerSession) {
@@ -231,6 +268,8 @@ export class Session extends Interface.Session {
         } else {
             console.log(`[Game ${this.id}] Player ${id} ("${displayName}") has rejoined.`);
         }
+
+        session.addConnection(RPCSession.current());
 
         if (firstPlayer) {
             this.host = session;
