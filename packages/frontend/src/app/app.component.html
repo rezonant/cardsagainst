@@ -1,11 +1,12 @@
 <nav>
-  <div class="logo">
+  <div class="logo animated">
     <i>Cards</i>
     <i>Against</i>
     <i>The Internet</i>
   </div>
-  <div class="spacer"></div>
-  <a href="#">Sign In</a>
+  <div class="spacer">
+  </div>
+  {{displayName}}
 </nav>
 
 <main>
@@ -13,5 +14,17 @@
 </main>
 
 <footer>
-
+  <div class="player-list" *ngIf="players.length > 0">
+    <h1>Players</h1>
+    <div class="player" *ngFor="let player of players" [class.me]="isMe(player)">
+      <ng-container *ngIf="phase === 'answering'">
+        <mat-icon *ngIf="hasAnswered(player)">done</mat-icon>
+        <mat-icon *ngIf="!hasAnswered(player)">hourglass_empty</mat-icon>
+      </ng-container>
+      {{player.displayName}}
+      <ng-container *ngIf="isTsar(player)">
+        [Czar]
+      </ng-container>
+    </div>
+  </div>
 </footer>

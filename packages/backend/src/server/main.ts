@@ -176,7 +176,7 @@ export class Session extends Interface.Session {
         if (this.round.answers.some(x => !x.answerCards))
             throw new Error(`Not all answers have been revealed yet!`);
 
-        let pendingAnswer = this.pendingAnswers.find(x => x.player === player);
+        let pendingAnswer = this.pendingAnswers.find(x => x.id === answer.id);
         this.round.phase = 'finished';
         this.round.winner = pendingAnswer.player.player;
         this.round.winningAnswer = answer;
@@ -247,7 +247,7 @@ export class Session extends Interface.Session {
 
     dealCards(player: PlayerSession) {
         let dealt = 0;
-        while (player.answerCards.length < 5) {
+        while (player.answerCards.length < 10) {
             let index = Math.random() * this.availableAnswerCards.length | 0;
             let card = this.availableAnswerCards[index];
             player.addCard(card);

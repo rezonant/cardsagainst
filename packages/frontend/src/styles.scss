@@ -19,7 +19,6 @@ html, body { height: 100%; }
     width: fit-content;
     margin: 1em 1em 1em 0;
     padding: 0;
-    animation: logo-intro 1s;
     transform-origin: top left;
     animation-fill-mode: forwards;
     line-height: 1em;
@@ -27,6 +26,10 @@ html, body { height: 100%; }
     i {
         display: block;
         font-style: normal;
+    }
+
+    &.animated {
+        animation: logo-intro 1s;
     }
 }
 

@@ -172,7 +172,7 @@ export class GameComponent {
                     this.pickedCards = [];
                 }
 
-                this.round = round;
+                this.round = this.game.round = round;
 
                 console.log(`Round updated:`);
                 console.dir(this.round);
@@ -181,6 +181,7 @@ export class GameComponent {
 
             console.log(`Joining game as ${this.playerId} ("${this.playerName}")...`);
             this.player = await this.session.join(this.playerId, this.playerName);
+            this.game.playerSession = this.player;
             if (!this.player) {
                 alert(`Failed to join game!`);
                 this.router.navigateByUrl('/');
@@ -224,7 +225,7 @@ export class GameComponent {
     get unansweredPlayers() {
         if (!this.round)
             return [];
-        return this.round.players.filter(x => this.round.answers.some(y => y.id === x.id));
+        return this.round.players.filter(x => !this.round.answers.some(y => y.id === x.id));
     }
 
     get unansweredPlayerSummary() {

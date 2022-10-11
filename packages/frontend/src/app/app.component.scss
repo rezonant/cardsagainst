@@ -7,4 +7,17 @@
 nav {
     display: flex;
     align-items: center;
+
+    .spacer {
+        text-align: center;
+    }
+}
+
+.player-list {
+    .player {
+        &.me {
+            font-weight: bold;
+            color: #ceb1ff;
+        }
+    }
 }
