@@ -18,6 +18,8 @@ export class GameService {
     async init() {
         this.ready = new Promise(async (resolve, reject) => {
             this.session = await RPCSession.connect(environment.backend);
+            window['rpc'] = this.session;
+
             // this.session.loggingEnabled = true;
             // this.session.tag = 'RPC';
             this.service = await this.session.getRemoteService(CardsAgainstService);

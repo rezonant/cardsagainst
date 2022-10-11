@@ -1,7 +1,7 @@
 import { Component } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
 import { RPCSession } from "@astronautlabs/webrpc";
-import { Answer, AnswerCard, PlayerSession, Round, Session } from "@cardsagainst/backend";
+import { Answer, AnswerCard, CardsAgainstService, PlayerSession, Round, Session } from "@cardsagainst/backend";
 import { GameService } from "../game.service";
 import { Card, Player, timeout } from "../types";
 import { v4 as uuid } from 'uuid';
@@ -159,47 +159,58 @@ export class GameComponent {
             this.playerName = localStorage['ca:playerName'] = prompt('What would you like to be called?')
         
         this.route.paramMap.subscribe(async params => {
-            this.session = await this.game.service.findSession(params.get('id'));
-
-            if (!this.session) {
-                alert(`Failed to find game!`);
-                this.router.navigateByUrl('/');
-            }
-            this.session.roundChanged.subscribe(round => {
-                let lastPhase = this.round?.phase;
-
-                if (lastPhase !== round.phase && round.phase === 'finished') {            
-                    this.pickedCards = [];
-                }
-
-                this.round = this.game.round = round;
-
-                console.log(`Round updated:`);
-                console.dir(this.round);
+            this.gameId = params.get('id');
+            this.connect();
+            this.game.session.channel.stateLost.subscribe(async () => {
+                console.log(`State was lost!`);
+                this.game.service = await this.game.session.getRemoteService(CardsAgainstService);
+                await this.connect();
             });
-            let gameId = await this.session.getId();
-
-            console.log(`Joining game as ${this.playerId} ("${this.playerName}")...`);
-            this.player = await this.session.join(this.playerId, this.playerName);
-            this.game.playerSession = this.player;
-            if (!this.player) {
-                alert(`Failed to join game!`);
-                this.router.navigateByUrl('/');
-            }
-            console.log(`Joined game successfully.`);
-
-            this.player.cardsChanged.subscribe(cards => {
-                this.hand = cards;
-                
-                console.log(`Player hand changed:`);
-                console.dir(this.hand);
-            });
-            this.hand = await this.player.getHand()
-            console.log(`Player hand:`);
-            console.dir(this.hand);
         });
     }
+
+    gameId: string;
     
+    private async connect() {
+        this.session = await this.game.service.findSession(this.gameId);
+
+        if (!this.session) {
+            alert(`Failed to find game!`);
+            this.router.navigateByUrl('/');
+        }
+        this.session.roundChanged.subscribe(round => {
+            let lastPhase = this.round?.phase;
+
+            if (lastPhase !== round.phase && round.phase === 'finished') {            
+                this.pickedCards = [];
+            }
+
+            this.round = this.game.round = round;
+
+            console.log(`Round updated:`);
+            console.dir(this.round);
+        });
+
+        console.log(`Joining game as ${this.playerId} ("${this.playerName}")...`);
+        this.player = await this.session.join(this.playerId, this.playerName);
+        this.game.playerSession = this.player;
+        if (!this.player) {
+            alert(`Failed to join game!`);
+            this.router.navigateByUrl('/');
+        }
+        console.log(`Joined game successfully.`);
+
+        this.player.cardsChanged.subscribe(cards => {
+            this.hand = cards;
+            
+            console.log(`Player hand changed:`);
+            console.dir(this.hand);
+        });
+        this.hand = await this.player.getHand()
+        console.log(`Player hand:`);
+        console.dir(this.hand);
+    }
+
     hand: AnswerCard[] = [];
     round: Round;
 

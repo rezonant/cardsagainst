@@ -292,6 +292,7 @@
                 }
             }
             &.hand {
+                pointer-events: initial;
                 overflow-x: auto;
                 width: 100%;
                 justify-content: flex-start;
@@ -300,6 +301,7 @@
                 .card.answer {
                     min-width: 25vw;
                     flex-shrink: 0;
+                    font-size: 14pt;
                 }
             }
         }
