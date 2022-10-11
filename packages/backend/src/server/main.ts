@@ -275,7 +275,7 @@ export class CardsAgainstService extends Interface.CardsAgainstService {
             this.availableAnswers.push(...set.white.map(x => ({ id: uuid(), ...x })));
         }
 
-        this.availablePrompts = this.availablePrompts.filter(x => x.pick > 1);
+        // this.availablePrompts = this.availablePrompts.filter(x => x.pick > 1);
         console.log(`Loaded ${this.availablePrompts.length} prompts and ${this.availableAnswers.length} answers.`);
     }
 
