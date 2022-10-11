@@ -1,0 +1,14 @@
+
+<div *ngIf="round">
+    <div class="playfield" *ngIf="round.prompt">
+        <div class="card prompt">
+        {{round.prompt}}
+        </div>
+    </div>
+
+    <div class="playfield playfield-hand" *ngIf="hand">
+        <div *ngFor="let card of hand" class="card answer" (click)="onCardClicked(card)">
+        {{card.text}}
+        </div>
+    </div>
+</div>

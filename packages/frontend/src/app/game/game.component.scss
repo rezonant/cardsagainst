@@ -1,0 +1,59 @@
+
+.playfield {
+    display: flex;
+    flex-direction: row;
+    align-content: space-around;
+    justify-content: center;
+
+    .card {
+        transition: all 0.5s;
+        aspect-ratio: 242 / 355;
+        width: 10em;
+        border: 1px solid white;
+        border-radius: 8px;
+        display: inline-block;
+        padding: 1em;
+        font-size: 20pt;
+
+        &.prompt {
+            background: black;
+            color: white;
+        }
+
+        &.answer {
+            background: white;
+            color: black;
+        }
+
+        animation: be-played 0.5s;
+    }
+
+    @keyframes be-played {
+        0% {
+            opacity: 0;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+
+
+
+    &:not(.playfield-hand) {
+        .card:first-child {
+            transform: rotateZ(-6deg);
+            transform-origin: bottom right;
+        }
+        .card:nth-child(2) {
+            position: relative;
+            left: -10vw;
+            transform: rotateZ(6deg);
+            transform-origin: bottom left;
+        }
+        .card:last-child:first-child {
+            transform: rotateZ(2deg) !important;
+        }
+    }
+    
+}

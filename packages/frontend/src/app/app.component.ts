@@ -1,20 +1,22 @@
-import { Component } from '@angular/core';
-import { CardsAgainstService } from '@cardsagainst/backend';
-import { RPCSession } from '@astronautlabs/webrpc';
+import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { GameService } from './game.service';
+import { v4 as uuid } from 'uuid';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
-export class AppComponent {
-  async ngOnInit() {
-    this.session = await RPCSession.connect(`ws://localhost:3044`);
-    this.service = await this.session.getRemoteService(CardsAgainstService);
+export class AppComponent implements OnInit {
+  constructor(
+    private game: GameService,
+    private router: Router
+  ) {
+
   }
 
-  session: RPCSession | undefined;
-  service: CardsAgainstService | undefined;
-
-  title = 'frontend';
+  async ngOnInit() {
+    this.game.init();
+  }
 }

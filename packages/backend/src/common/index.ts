@@ -31,6 +31,7 @@ export interface Answer {
     answerCards: AnswerCard[];
 }
 
+@webrpc.Remotable()
 export abstract class PlayerSession {
     abstract get cardsChanged(): Observable<AnswerCard[]>;
     abstract get judgementRequested(): Observable<JudgementRequest>;
@@ -51,5 +52,5 @@ export abstract class Session {
 @webrpc.Name('dev.rezonant.cardsagainst')
 export abstract class CardsAgainstService extends webrpc.Service {
     abstract findSession(id: string): Promise<Session>;
-    abstract createSession(id: string): Promise<Session>;
+    abstract createSession(): Promise<Session>;
 }

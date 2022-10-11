@@ -1,11 +1,17 @@
 <nav>
-  <div class="logo">Cards<br/> Against<br/> The Internet</div>
+  <div class="logo">
+    <i>Cards</i>
+    <i>Against</i>
+    <i>The Internet</i>
+  </div>
   <div class="spacer"></div>
   <a href="#">Sign In</a>
 </nav>
 
-<div *ngIf="!session">
-  <h1>Join Game</h1>
+<main>
+  <router-outlet></router-outlet>
+</main>
 
-  
-</div>
+<footer>
+
+</footer>
