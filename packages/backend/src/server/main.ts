@@ -141,6 +141,12 @@ export class Session extends Interface.Session {
 
     removePlayer(player: PlayerSession) {
         this.playerMap.delete(player.player.id);
+
+        if (this.playerMap.size === 0) {
+            this.service.deleteGame(this);
+            return;
+        }
+
         if (this.round) {
             this.round.players = this.round.players.filter(x => x.id !== player.player.id);
             if (this.round.tsarPlayerId === player.player.id) {
@@ -320,6 +326,10 @@ export class CardsAgainstService extends Interface.CardsAgainstService {
 
     availablePrompts: BlackCard[] = [];
     availableAnswers: Interface.AnswerCard[] = [];
+
+    deleteGame(game: Session) {
+        this.sessions.delete(game.id);
+    }
 
     @Get()
     async endpoint() {
