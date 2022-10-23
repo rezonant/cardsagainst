@@ -7,6 +7,8 @@ body {
     margin: 0;
     padding: 0;
     font-family: Roboto, "Helvetica Neue", sans-serif;
+    display: flex;
+    flex-direction: column;
 }
 
 html, body { height: 100%; }
@@ -15,41 +17,49 @@ html, body { height: 100%; }
     display: inline-block;
     font-weight: 700;
     color: white;
-    font-size: 15px;
+    font-size: 24px;
     width: fit-content;
     margin: 1em 1em 1em 0;
     padding: 0;
-    animation: logo-intro 1s;
-    transform-origin: top left;
-    animation-fill-mode: forwards;
 
     i {
         display: block;
         font-style: normal;
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    &.with-intro {
+        position: absolute;
+        transform-origin: top left;
+        animation: logo-intro 1s;
+        animation-fill-mode: forwards;
+        z-index: 10;
     }
 }
 
-$big-font: 22vw;
-$small-font: 18pt;
-
 @keyframes logo-intro {
     0% {
-        transform-origin: center left;
-        font-size: $big-font;
-        transform: rotateY(90deg);
+        transform: rotateY(90deg) scale(3);
+        margin: 0;
+        background-color: black;
+        padding: 10px;
     }
 
     86% {
-        transform: rotateY(0deg);
+        transform: rotateY(0deg) scale(3);
+        margin: 0;
+        background-color: black;
+        padding: 10px;
     }
 
     87% {
-        transform-origin: top left; 
-        font-size: $big-font;
+        transform: scale(3);
+        margin: 0;
     }
 
     100% {
-        font-size: $small-font;
+        transform: scale(1);
     }
 }
 
@@ -60,4 +70,8 @@ $small-font: 18pt;
 a {
     color: white;
     text-decoration: underline;
+}
+
+router-outlet {
+    display: none;
 }
