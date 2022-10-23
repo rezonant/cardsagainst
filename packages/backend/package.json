@@ -7,7 +7,17 @@
   "scripts": {
     "build": "tsc -b",
     "start": "npm run build && node dist/server/main",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "docker:build": "npm run build && docker build . -t cardsagainst/backend --build-arg NPM_TOKEN && npm run docker:selftest",
+    "docker:tag": "docker tag cardsagainst/backend:latest registry.k8s.rezonant.dev/cardsagainst/backend:latest",
+    "docker:push": "docker push registry.k8s.rezonant.dev/cardsagainst/backend:latest",
+    "docker": "npm run docker:build && npm run docker:tag && npm run docker:push",
+    "production:deploy": "npm run build && npm run docker && kubectl rollout restart -n cardsagainst deployment cardsagainst-backend.rezonant.dev",
+    "production:install": "npm run build && helm install cardsagainst helm/cardsagainst -n cardsagainst --create-namespace",
+    "production:uninstall": "helm uninstall cardsagainst -n cardsagainst",
+    "selftest": "npm run build && node dist/server/main -- --self-test",
+    "docker:selftest": "docker run --rm -it -- cardsagainst/backend --self-test",
+    "production:logs": "kubectl logs -l app=cardsagainst-backend.rezonant.dev -n cardsagainst -f --max-log-requests 20"
   },
   "author": "",
   "license": "MIT",
@@ -15,7 +25,7 @@
     "@alterior/express": "^3.0.1",
     "@alterior/platform-nodejs": "^3.0.2",
     "@alterior/web-server": "^3.0.1",
-    "@astronautlabs/webrpc": "^0.2.6",
+    "@astronautlabs/webrpc": "^0.2.8",
     "rxjs": "^7.5.7",
     "uuid": "^9.0.0"
   },

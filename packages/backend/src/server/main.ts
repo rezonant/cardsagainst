@@ -37,6 +37,24 @@ export class PlayerSession extends Interface.PlayerSession {
         super();
     }
 
+    private connections = [];
+    private leftTimeout;
+    addConnection(session: RPCSession) {
+        this.connections.push(session);
+
+        clearTimeout(this.leftTimeout);
+
+        (session.channel as SocketChannel).socket.addEventListener('close', () => {
+            this.connections = this.connections.filter(x => x !== session);
+            if (this.connections.length === 0) {
+                this.leftTimeout = setTimeout(() => {
+                    console.log(`Player ${this.player.id} has timed out.`);
+                    this.session.removePlayer(this);
+                }, 1000 * 30);
+            }
+        });
+    }
+
     private _judgementRequested = new Subject<Interface.JudgementRequest>();
     private _judgementRequested$ = this._judgementRequested.asObservable();
     private _cardsChanged = new Subject<Interface.AnswerCard[]>();
@@ -66,8 +84,6 @@ export class PlayerSession extends Interface.PlayerSession {
     @webrpc.Method()
     override async submitAnswer(answerCards: Interface.AnswerCard[]): Promise<void> {
         this.session.submitPlayerAnswer(this, answerCards);
-        this.answerCards = this.answerCards.filter(x => answerCards.some(y => y.id !== x.id));
-        this._cardsChanged.next(this.answerCards);
     }
 
     @webrpc.Method()
@@ -82,6 +98,13 @@ export class PlayerSession extends Interface.PlayerSession {
 
     addCard(card: Interface.AnswerCard) {
         this.answerCards.push(card);
+    }
+
+    removeCards(cards: Interface.AnswerCard[]) {
+        this.answerCards = this.answerCards.filter(x => !cards.some(y => y.id === x.id));
+    }
+    
+    sendCards() {
         this._cardsChanged.next(this.answerCards);
     }
 }
@@ -101,7 +124,7 @@ export class Session extends Interface.Session {
 
     playerMap = new Map<string, PlayerSession>();
     round: Interface.Round;
-    pendingAnswers: PendingAnswer[];
+    pendingAnswers: PendingAnswer[] = [];
     host: PlayerSession;
 
     get players() {
@@ -116,10 +139,35 @@ export class Session extends Interface.Session {
         return this._roundChanged$;
     }
 
+    removePlayer(player: PlayerSession) {
+        this.playerMap.delete(player.player.id);
+
+        if (this.playerMap.size === 0) {
+            this.service.deleteGame(this);
+            return;
+        }
+
+        if (this.round) {
+            this.round.players = this.round.players.filter(x => x.id !== player.player.id);
+            if (this.round.tsarPlayerId === player.player.id) {
+                this.round.tsarPlayerId = this.round.players[this.tsarPlayerIndex = this.tsarPlayerIndex % this.round.players.length].id;
+            }
+
+            let unansweredPlayers = this.players.filter(x => !this.hasAnswered(x));
+
+            if (this.round.phase === 'answering' && unansweredPlayers.length === 0) {
+                this.round.phase = 'judging';
+                this._roundChanged.next(this.round);
+            }
+
+            this._roundChanged.next(this.round);
+        }
+    }
+
     startNextRound(player: PlayerSession) {
         if (this.round.phase !== 'finished')
             throw new Error(`The current round isn't finished yet!`);
-        if (this.round.host.id !== player.player.id)
+        if (this.round.tsarPlayerId !== player.player.id)
             throw new Error(`You must be the host to start the next round`);
 
         this.startRound();
@@ -138,6 +186,7 @@ export class Session extends Interface.Session {
     startRound() {
         let prompt = this.pickPrompt();
 
+        this.pendingAnswers = [];
         console.log(`[CAH] Round starting: ${prompt.text}`);
         this.round = {
             host: this.host.player,
@@ -150,6 +199,9 @@ export class Session extends Interface.Session {
             winner: undefined
         }
         this._roundChanged.next(this.round);
+
+        for (let player of this.players)
+            this.dealCards(player);
     }
 
     async revealAnswer(player: PlayerSession, revealedAnswer: Interface.Answer) {
@@ -167,9 +219,10 @@ export class Session extends Interface.Session {
         if (this.round.answers.some(x => !x.answerCards))
             throw new Error(`Not all answers have been revealed yet!`);
 
-        let pendingAnswer = this.pendingAnswers.find(x => x.player === player);
+        let pendingAnswer = this.pendingAnswers.find(x => x.id === answer.id);
         this.round.phase = 'finished';
         this.round.winner = pendingAnswer.player.player;
+        this.round.winningAnswer = answer;
         this._roundChanged.next(this.round);
     }
 
@@ -177,15 +230,25 @@ export class Session extends Interface.Session {
         if (this.pendingAnswers.some(x => x.player === player))
             throw new Error(`You've already submitted an answer`);
 
-        let id = uuid();
+        console.log(`[CAH] Player ${player.player.displayName} submitted an answer.`);
+        
+        let id = player.player.id;
         this.pendingAnswers.push({ id, player, answerCards });
-        this.round.answers.push({ id, answerCards: undefined });
+        this.round.answers.push({ id, answerCards: answerCards.map(x => ({ id: '', text: '' })) });
+        this.round.answers.sort((a, b) => Math.random() > 0.5 ? 1 : -1);
         this._roundChanged.next(this.round);
-        this.dealCards(player);
+        
+        player.removeCards(answerCards);
+        player.sendCards();
 
-        if (!this.players.some(x => this.hasAnswered(x))) {
+        let unansweredPlayers = this.players.filter(x => !this.hasAnswered(x));
+
+        if (unansweredPlayers.length === 0) {
+            console.log(`[CAH] Entering judging period.`);
             this.round.phase = 'judging';
             this._roundChanged.next(this.round);
+        } else {
+            console.log(`[CAH] Waiting on ${unansweredPlayers.length} players (${unansweredPlayers.map(x => x.player.displayName).join(', ')})`);
         }
     }
     
@@ -212,9 +275,14 @@ export class Session extends Interface.Session {
             console.log(`[Game ${this.id}] Player ${id} ("${displayName}") has rejoined.`);
         }
 
+        session.addConnection(RPCSession.current());
+
         if (firstPlayer) {
             this.host = session;
             this.startRound();
+        } else {
+            this.round.players = this.players.map(x => x.player);
+            this._roundChanged.next(this.round);
         }
     
         return session;
@@ -223,12 +291,17 @@ export class Session extends Interface.Session {
     availableAnswerCards: Interface.AnswerCard[];
 
     dealCards(player: PlayerSession) {
-        while (player.answerCards.length < 5) {
+        let dealt = 0;
+        while (player.answerCards.length < 10) {
             let index = Math.random() * this.availableAnswerCards.length | 0;
             let card = this.availableAnswerCards[index];
             player.addCard(card);
+            dealt += 1;
             this.availableAnswerCards.splice(index, 1);
         }
+
+        console.log(`[CAH] Dealt ${dealt} cards to ${player.player.displayName}. Player now has ${player.answerCards.length} cards.`);
+        player.sendCards();
     }
 }
 
@@ -247,11 +320,16 @@ export class CardsAgainstService extends Interface.CardsAgainstService {
             this.availableAnswers.push(...set.white.map(x => ({ id: uuid(), ...x })));
         }
 
+        // this.availablePrompts = this.availablePrompts.filter(x => x.pick > 1);
         console.log(`Loaded ${this.availablePrompts.length} prompts and ${this.availableAnswers.length} answers.`);
     }
 
     availablePrompts: BlackCard[] = [];
     availableAnswers: Interface.AnswerCard[] = [];
+
+    deleteGame(game: Session) {
+        this.sessions.delete(game.id);
+    }
 
     @Get()
     async endpoint() {

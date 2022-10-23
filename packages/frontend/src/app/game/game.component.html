@@ -1,14 +1,96 @@
+<ng-container *ngIf="!round">
+    Just a sec...
+</ng-container>
+<ng-container *ngIf="round">
+    <ng-container *ngIf="round.phase === 'answering'">
+        <div class="playfield shared" *ngIf="round.prompt">
+            <div class="card prompt">
+            {{round.prompt}}
+            </div>
+            
+            <ng-container *ngIf="!hasVoted">
+                <div class="card answer" *ngFor="let answer of pickedCards">
+                    <button mat-icon-button class="remove" (click)="unpickCard(answer)">
+                        <mat-icon>close</mat-icon>
+                    </button>
 
-<div *ngIf="round">
-    <div class="playfield" *ngIf="round.prompt">
-        <div class="card prompt">
-        {{round.prompt}}
-        </div>
-    </div>
+                    <div class="text">
+                        {{answer.text}}
+                    </div>
 
-    <div class="playfield playfield-hand" *ngIf="hand">
-        <div *ngFor="let card of hand" class="card answer" (click)="onCardClicked(card)">
-        {{card.text}}
+                    <button class="bottom" mat-raised-button *ngIf="isLastPicked(answer) && allPicked" color="primary" (click)="submitAnswer()">
+                        Submit Answer
+                    </button>
+                </div>
+            </ng-container>
         </div>
-    </div>
-</div>
+
+        <div class="playfield hand" *ngIf="hand">
+            <ng-container *ngFor="let card of hand">
+                <a href="javascript:;" *ngIf="!isPicked(card)" class="card answer" (click)="pickCard(card)" [class.disabled]="allPicked">
+                    <div class="text">
+                        {{card.text}}
+                    </div>
+                </a>
+            </ng-container>
+        </div>
+    </ng-container>
+    <ng-container *ngIf="round.phase === 'judging'">
+        <div class="message">{{judgingMessage}}</div>
+        <div class="playfield judging" *ngIf="round.prompt">
+            <div class="card prompt">
+                <div class="text">
+                    {{round.prompt}}
+                </div>
+            </div>
+
+            <div class="answer-sets" [class.pick-one]="round.pick === 1" [class.pick-two]="round.pick === 2">
+                <div class="answer-set" *ngFor="let answer of answerSets">
+                    <div class="card answer" *ngFor="let answerCard of answer.answerCards" [class.unrevealed]="answerCard.text === ''">
+                        <div class="logo" *ngIf="answerCard.text === ''">
+                            Cards<br/>
+                            Against<br/>
+                            The Internet
+                        </div>
+                        <div class="text" *ngIf="answerCard.text !== ''">
+                            {{answerCard.text}}
+                        </div>
+
+                        <ng-container *ngIf="isTsar">
+                            <button class="bottom" mat-raised-button *ngIf="isLastCardOfAnswer(answer, answerCard) && allRevealed" color="primary" (click)="pickAnswer(answer)">
+                                Pick
+                            </button>
+                            <button class="bottom" mat-raised-button *ngIf="!answerCard.text" color="primary" (click)="revealAnswer(answer)">
+                                Reveal
+                            </button>
+                        </ng-container>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </ng-container>
+    
+    <ng-container *ngIf="round.phase === 'finished'">
+        <div class="message">
+            {{winningMessage}}<br/><br/>
+            <button mat-raised-button color="primary" [disabled]="!isTsar" (click)="startNextRound()">
+                <ng-container *ngIf="isTsar">
+                    Start next round
+                </ng-container>
+                <ng-container *ngIf="!isTsar">
+                    Waiting for next round...
+                </ng-container>
+            </button>
+        </div>
+        <div class="playfield shared" *ngIf="round.prompt">
+            <div class="card prompt">
+                <div class="text">
+                    {{round.prompt}}
+                </div>
+            </div>
+            <div class="card answer" *ngFor="let answerCard of round.winningAnswer.answerCards">
+                {{answerCard.text}}
+            </div>
+        </div>
+    </ng-container>
+</ng-container>

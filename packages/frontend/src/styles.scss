@@ -36,6 +36,10 @@ html, body { height: 100%; }
         animation-fill-mode: forwards;
         z-index: 10;
     }
+
+    &.animated {
+        animation: logo-intro 1s;
+    }
 }
 
 @keyframes logo-intro {

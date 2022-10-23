@@ -11,6 +11,9 @@ nav {
     display: flex;
     align-items: center;
     height: 7.6em;
+    .spacer {
+        text-align: center;
+    }
 }
 
 main {
@@ -20,5 +23,14 @@ main {
 
     ::ng-deep & > * {
         flex-grow: 1;
+    }
+}
+
+.player-list {
+    .player {
+        &.me {
+            font-weight: bold;
+            color: #ceb1ff;
+        }
     }
 }

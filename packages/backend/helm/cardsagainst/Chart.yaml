@@ -1,0 +1,13 @@
+apiVersion: v2
+name: rezonant/cardsagainst
+version: 1.0.0
+description: "Cards Against The Internet"
+type: application
+home: https://github.com/rezonant/cardsagainst
+sources:
+  - https://github.com/rezonant/cardsagainst
+maintainers:
+  - name: William Lahti
+    email: wilahti@gmail.com
+    url: https://github.com/rezonant
+appVersion: "1.0.0"

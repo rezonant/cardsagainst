@@ -1,0 +1,75 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.cardsagainst.domain }}
+spec:
+  secretName: {{ .Values.cardsagainst.domain }}
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  issuerRef:
+    name: certs
+    kind: ClusterIssuer
+  dnsNames:
+  - {{ .Values.cardsagainst.domain }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.cardsagainst.domain }}
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  rules:
+  - host: {{ .Values.cardsagainst.domain }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: backend
+            port: 
+              number: 3044
+  tls:
+    - secretName: {{ .Values.cardsagainst.domain }}
+      hosts:
+      - {{ .Values.cardsagainst.domain }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  ports:
+  - port: 3044
+    targetPort: 3044
+  selector:
+    app: backend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.cardsagainst.domain }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: {{ .Values.cardsagainst.registry }}/cardsagainst/backend
+        ports:
+        - containerPort: 3044
+      volumes:
+      - name: firebase-creds
+        secret:
+          secretName: firebase-credentials
+      imagePullSecrets:
+      - name: {{ .Values.cardsagainst.registryCreds }}
