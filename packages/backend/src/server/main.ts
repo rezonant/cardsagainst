@@ -63,7 +63,26 @@ export class PlayerSession extends Interface.PlayerSession {
     private _judgementRequested$ = this._judgementRequested.asObservable();
     private _cardsChanged = new Subject<Interface.AnswerCard[]>();
     private _cardsChanged$ = this._cardsChanged.asObservable();
+    private _snackMessageReceived = new Subject<string>();
+    private _snackMessageReceived$ = this._snackMessageReceived.asObservable();
+
     answerCards: Interface.AnswerCard[] = [];
+
+    @webrpc.Event()
+    get snackMessageReceived() {
+        return this._snackMessageReceived$;
+    }
+
+    sendSnackMessage(message: string) {
+        setTimeout(() => this._snackMessageReceived.next(message), 100);
+    }
+
+    sendSnackMessageToOtherPlayers(message: string) {
+        this.session.players
+            .filter(x => x.player.id !== this.player.id)
+            .forEach(player => player.sendSnackMessage(message))
+        ;
+    }
 
     @webrpc.Event()
     get judgementRequested() {
@@ -87,7 +106,7 @@ export class PlayerSession extends Interface.PlayerSession {
 
     @webrpc.Method()
     override async submitAnswer(answerCards: Interface.AnswerCard[]): Promise<void> {
-        this.session.submitPlayerAnswer(this, answerCards);
+        await this.session.submitPlayerAnswer(this, answerCards);
     }
 
     @webrpc.Method()
@@ -167,7 +186,14 @@ export class Session extends Interface.Session {
         return this._roundChanged$;
     }
 
+    idlePlayers: PlayerSession[] = [];
+
+    sendAnnouncement(message: string) {
+        this.players.forEach(player => player.sendSnackMessage(message));
+    }
+
     removePlayer(player: PlayerSession) {
+        this.idlePlayers.push(player);
         this.playerMap.delete(player.player.id);
 
         if (this.playerMap.size === 0) {
@@ -175,7 +201,19 @@ export class Session extends Interface.Session {
             return;
         }
 
+        console.log(`[Game ${this.id}] Player ${player.player.id} ("${player.player.displayName}") has left the game.`);
+        this.sendAnnouncement(`${player.player.displayName} has left the game.`)
 
+        if (this.gameRules.leavingPlayerWill === 'lose-hand') {
+            console.log(`[Game ${this.id}] -- Their hand will be burnt until reshuffle.`);
+            player.answerCards = [];
+        } else if (this.gameRules.leavingPlayerWill === 'return-hand') {
+            console.log(`[Game ${this.id}] -- Their hand will be reshuffled into the deck.`);
+            this.availableAnswerCards.push(...player.answerCards);
+            player.answerCards = [];
+        } else {
+            console.log(`[Game ${this.id}] -- Their hand will be kept until they return.`);
+        }
 
         if (this.round) {
             this.round.players = this.round.players.filter(x => x.id !== player.player.id);
@@ -183,17 +221,13 @@ export class Session extends Interface.Session {
                 this.round.tsarPlayerId = this.round.players[this.tsarPlayerIndex = this.tsarPlayerIndex % this.round.players.length].id;
             }
 
-            let unansweredPlayers = this.players.filter(x => !this.hasAnswered(x));
-
-            if (this.round.phase === 'answering' && unansweredPlayers.length === 0) {
-                this.enterJudgingPhase();
-            }
-
             this._roundChanged.next(this.round);
+            this.checkForAllAnswers();
         }
     }
 
-    enterJudgingPhase() {    
+    enterJudgingPhase() {
+        let houseAnswersAdded = 0;
         while (this.round.answers.length < this.gameRules.housePlaysUpTo) {
             console.log(`[CAH] Adding house answer...`);
             let answer: PendingAnswer = {
@@ -203,7 +237,11 @@ export class Session extends Interface.Session {
             };
             this.pendingAnswers.push(answer);
             this.round.answers.push({ id: answer.id, answerCards: answer.answerCards.map(x => ({ id: '', text: '', deck: <Interface.Deck>{ id: '',  name: '' } })) });
+            houseAnswersAdded += 1;
         }
+
+        if (houseAnswersAdded > 0)
+            this.sendAnnouncement(`${houseAnswersAdded} house answers were added.`);
 
         this.round.phase = 'judging';
         this._roundChanged.next(this.round);
@@ -269,6 +307,8 @@ export class Session extends Interface.Session {
 
         for (let player of this.players)
             this.dealCardsToPlayer(player);
+        
+        this.checkForAllAnswers();
     }
 
     async playerIsLeaving(player: PlayerSession) {
@@ -301,6 +341,9 @@ export class Session extends Interface.Session {
         if (this.pendingAnswers.some(x => x.player === player))
             throw new Error(`You've already submitted an answer`);
 
+        if (player.player.id === this.round.tsarPlayerId && !this.czarIsPlaying)
+            throw new Error(`You are the Czar, and the Czar cannot play a card right now`);
+        
         console.log(`[CAH] Player ${player.player.displayName} submitted an answer.`);
         
         let id = player.player.id;
@@ -312,7 +355,17 @@ export class Session extends Interface.Session {
         player.removeCards(answerCards);
         player.sendCards();
 
+        this.checkForAllAnswers();
+    }
+
+    get czarIsPlaying() {
+        return this.players.length < this.gameRules.czarPlaysUpTo;
+    }
+
+    checkForAllAnswers() {
         let unansweredPlayers = this.players.filter(x => !this.hasAnswered(x));
+        if (!this.czarIsPlaying)
+            unansweredPlayers = unansweredPlayers.filter(x => x.player.id !== this.round.tsarPlayerId);
 
         if (unansweredPlayers.length === 0) {
             console.log(`[CAH] Entering judging period.`);
@@ -335,18 +388,32 @@ export class Session extends Interface.Session {
     async join(id: string, displayName: string): Promise<Interface.PlayerSession> {
         let firstPlayer = this.playerMap.size === 0;
         let session = this.playerMap.get(id);
+        let idleSession = this.idlePlayers.find(x => x.player.id === id);
 
-        if (!session) {
+        if (!session && idleSession) {
+            console.log(`[Game ${this.id}] Player ${id} ("${displayName}") has rejoined after previously leaving the game.`);
+            session = idleSession;
+            let returned = this.removeIllegalCardsFromPlayer(session);
+
+            if (returned.length > 0) {
+                session.sendSnackMessage(`Welcome back! ${returned.length} cards from your hand were removed because the deck changed.`)
+            } else {
+                session.sendSnackMessage(`Welcome back! The cards in your hand are as they were when you left.`)
+            }
+            session.sendSnackMessageToOtherPlayers(`${displayName} has returned to the game.`);
+        } else if (!session) {
             session = new PlayerSession(this, { id, displayName });
-            this.dealCardsToPlayer(session);
-            this.playerMap.set(id, session);
             console.log(`[Game ${this.id}] Player ${id} ("${displayName}") has joined.`);
+
+            session.sendSnackMessage(`You have joined the game.`);
+            session.sendSnackMessageToOtherPlayers(`${displayName} has joined the game.`);
         } else {
             console.log(`[Game ${this.id}] Player ${id} ("${displayName}") has rejoined.`);
-
-            session.player.displayName = displayName;
         }
 
+        this.playerMap.set(id, session);
+        session.player.displayName = displayName;
+        this.dealCardsToPlayer(session);
         session.addConnection(RPCSession.current());
 
         if (firstPlayer) {
@@ -395,7 +462,8 @@ export class Session extends Interface.Session {
             dealt += 1;
         }
 
-        console.log(`[CAH] Dealt ${dealt} cards to ${player.player.displayName}. Player now has ${player.answerCards.length} cards.`);
+        if (dealt > 0)
+            console.log(`[CAH] Dealt ${dealt} cards to ${player.player.displayName}. Player now has ${player.answerCards.length} cards.`);
         player.sendCards();
     }
     
@@ -448,12 +516,7 @@ export class Session extends Interface.Session {
 
         // Return all disabled cards from players' hands and deal replacements
 
-        for (let player of this.players) {
-            let returned = player.answerCards.filter(x => !this.isDeckEnabledById(x.deck.id));
-            this.availableAnswerCards.push(...returned);
-            player.answerCards = player.answerCards.filter(x => this.isDeckEnabledById(x.deck.id));
-            this.dealCardsToPlayer(player);
-        }
+        this.removeAllIllegalCards();
 
         if (this.round?.promptDeck?.id && !this.isDeckEnabledById(this.round.promptDeck.id)) {
             console.log(`[CAH] Current prompt is outside of enabled decks, starting a new round!`);
@@ -462,6 +525,27 @@ export class Session extends Interface.Session {
 
         this.round.enabledDecks = this.enabledDecks;
         this._roundChanged.next(this.round);
+    }
+
+    removeAllIllegalCards() {
+        for (let player of this.players) {
+            this.removeIllegalCardsFromPlayer(player);
+        }
+    }
+
+    /**
+     * Find all cards in the given player's hand which are not part of the current deck, remove them
+     * from their hand, replace them with fresh cards, and return the set of confiscated cards.
+     * @param player 
+     * @returns 
+     */
+    removeIllegalCardsFromPlayer(player: PlayerSession) {
+        let returned = player.answerCards.filter(x => !this.isDeckEnabledById(x.deck.id));
+        this.availableAnswerCards.push(...returned);
+        player.answerCards = player.answerCards.filter(x => this.isDeckEnabledById(x.deck.id));
+        this.dealCardsToPlayer(player);
+
+        return returned;
     }
 
     isDeckEnabledById(id: string) {

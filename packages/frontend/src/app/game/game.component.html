@@ -30,7 +30,13 @@
             </ng-container>
         </cah-playfield>
 
-        <cah-playfield class="hand" [class.above]="!allPicked" *ngIf="hand">
+        <div class="message" *ngIf="!hasVoted && isTsar && !isTsarVoting">
+            You are the Czar. Waiting for players to pick their answers...
+        </div>
+        <div class="message" *ngIf="hasVoted">
+            Waiting for other players to pick their answers...
+        </div>
+        <cah-playfield class="hand" [class.above]="!allPicked" *ngIf="hand && !hasVoted && (!isTsar || isTsarVoting)">
             <ng-container *ngFor="let card of hand">
                 <cah-card class="answer" [class.disabled]="allPicked" *ngIf="!isPicked(card)">
                     <a href="javascript:;" (click)="pickCard(card)">

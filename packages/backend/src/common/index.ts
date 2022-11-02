@@ -48,6 +48,8 @@ export interface Answer {
 export abstract class PlayerSession {
     abstract get cardsChanged(): Observable<AnswerCard[]>;
     abstract get judgementRequested(): Observable<JudgementRequest>;
+    abstract get snackMessageReceived(): Observable<string>;
+
     abstract submitAnswer(answerCards: AnswerCard[]): Promise<void>;
     abstract pickAnswer(answer: Answer): Promise<void>;
     abstract revealAnswer(answer: Answer): Promise<void>;

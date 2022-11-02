@@ -5,6 +5,7 @@ import { Answer, AnswerCard, CardsAgainstService, PlayerSession, Round, Session 
 import { GameService } from "../game.service";
 import { Card, Player, timeout } from "../types";
 import { v4 as uuid } from 'uuid';
+import { MatSnackBar } from "@angular/material/snack-bar";
 
 const QUESTIONS = [
     "...and then there was the time I found _____ on the root partition.",
@@ -134,7 +135,12 @@ const QUESTIONS = [
     styleUrls: ['./game.component.scss']
 })
 export class GameComponent {
-    constructor(private game: GameService, private route: ActivatedRoute, private router: Router) {
+    constructor(
+        private game: GameService, 
+        private route: ActivatedRoute, 
+        private router: Router,
+        private matSnackBar: MatSnackBar
+    ) {
 
     }
 
@@ -175,7 +181,9 @@ export class GameComponent {
         this.session = await this.game.cardsAgainst.findSession(this.gameId);
 
         if (!this.session) {
-            alert(`Failed to find game! ${this.gameId}`);
+            this.matSnackBar.open(`Game does not exist any more!`, undefined, {
+                duration: 7000
+            });
             this.router.navigateByUrl('/');
         }
         this.session.roundChanged.subscribe(round => {
@@ -198,13 +206,24 @@ export class GameComponent {
 
         console.log(`Joining game as ${this.playerId} ("${this.playerName}")...`);
         this.player = await this.session.join(this.playerId, this.playerName);
-        this.game.session = this.session;
-        this.game.playerSession = this.player;
         if (!this.player) {
-            alert(`Failed to join game!`);
+            console.error(`Could not obtain player session!`);
+            this.matSnackBar.open(`Failed to join game!`, undefined, {
+                duration: 7000
+            });
             this.router.navigateByUrl('/');
         }
+        
+        this.game.session = this.session;
+        this.game.playerSession = this.player;
         console.log(`Joined game successfully.`);
+
+        this.player.snackMessageReceived.subscribe(message => {
+            console.log(`[Snack] ${message}`);
+            this.matSnackBar.open(message, undefined, {
+                duration: 3000
+            })
+        });
 
         this.player.cardsChanged.subscribe(cards => {
             this.hand = cards;
@@ -264,6 +283,10 @@ export class GameComponent {
         return this.tsar?.id === this.playerId;
     }
 
+    get isTsarVoting() {
+        return this.round.players.length < this.round.gameRules.czarPlaysUpTo;
+    }
+
     async startNextRound() {
         await this.player.startNextRound();
     }
@@ -301,9 +324,9 @@ export class GameComponent {
             return '';
         
         if (this.imJudging)
-            return `You are judging. ${(this.allRevealed ? 'Choose a winner.' : `Reveal each answer as you read.`)}`;
+            return `You are the Czar. ${(this.allRevealed ? 'Choose a winner.' : `Reveal each answer as you read.`)}`;
         
-        return `${this.tsar.displayName} is judging.`;
+        return `${this.tsar.displayName} is the Czar.`;
     }
 
     async revealAnswer(answer: Answer) {
@@ -319,7 +342,13 @@ export class GameComponent {
     }
 
     async submitAnswer() {
-        await this.player.submitAnswer(this.pickedCards);
+        try {
+            await this.player.submitAnswer(this.pickedCards);
+        } catch (e) {
+            console.error(`Caught error while submitting answer:`);
+            console.error(e);
+            alert(e.message);
+        }
         //this.pickedCards = [];
     }
 
