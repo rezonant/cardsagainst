@@ -33,7 +33,7 @@ export interface BlackCard {
 }
 
 export class PlayerSession extends Interface.PlayerSession {
-    constructor(readonly session: Session, readonly player: Interface.Player) {
+    constructor(readonly session: Game, readonly player: Interface.Player) {
         super();
     }
 
@@ -115,7 +115,7 @@ export interface PendingAnswer {
     answerCards: Interface.AnswerCard[];
 }
 
-export class Session extends Interface.Session {
+export class Game extends Interface.Game {
     constructor(readonly service: CardsAgainstService, readonly id: string) {
         super();
         this.availableAnswerCards = this.service.availableAnswers;
@@ -124,6 +124,7 @@ export class Session extends Interface.Session {
 
     playerMap = new Map<string, PlayerSession>();
     round: Interface.Round;
+    previousRounds: Interface.Round[];
     pendingAnswers: PendingAnswer[] = [];
     host: PlayerSession;
 
@@ -183,11 +184,23 @@ export class Session extends Interface.Session {
         return card;
     }
 
+    async getPreviousRounds() {
+        return this.previousRounds;
+    }
+
+    maxPreviousRounds = 50;
+
     startRound() {
         let prompt = this.pickPrompt();
 
         this.pendingAnswers = [];
         console.log(`[CAH] Round starting: ${prompt.text}`);
+
+        if (this.round) {
+            this.previousRounds.unshift(this.round);
+            this.previousRounds.splice(this.maxPreviousRounds, this.previousRounds.length);
+        }
+
         this.round = {
             host: this.host.player,
             answers: [],
@@ -327,7 +340,7 @@ export class CardsAgainstService extends Interface.CardsAgainstService {
     availablePrompts: BlackCard[] = [];
     availableAnswers: Interface.AnswerCard[] = [];
 
-    deleteGame(game: Session) {
+    deleteGame(game: Game) {
         this.sessions.delete(game.id);
     }
 
@@ -342,16 +355,16 @@ export class CardsAgainstService extends Interface.CardsAgainstService {
         }
     }
     
-    sessions = new Map<string, Session>;
+    sessions = new Map<string, Game>;
 
     @webrpc.Method()
-    override async findSession(id: string): Promise<Interface.Session> {
+    override async findSession(id: string): Promise<Interface.Game> {
         return this.sessions.get(id);
     }
 
     @webrpc.Method()
-    override async createSession(): Promise<Interface.Session> {
-        let session = new Session(this, uuid());
+    override async createSession(): Promise<Interface.Game> {
+        let session = new Game(this, uuid());
         this.sessions.set(session.id, session);
         return session;
     }

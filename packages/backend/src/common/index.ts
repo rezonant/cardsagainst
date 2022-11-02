@@ -44,14 +44,15 @@ export abstract class PlayerSession {
 }
 
 @webrpc.Remotable()
-export abstract class Session {
+export abstract class Game {
     abstract get roundChanged(): Observable<Round>;
     abstract getId(): Promise<string>;
     abstract join(id: string, displayName: string): Promise<PlayerSession>;
+    abstract getPreviousRounds(): Promise<Round[]>;
 }
 
 @webrpc.Name('dev.rezonant.cardsagainst')
 export abstract class CardsAgainstService extends webrpc.Service {
-    abstract findSession(id: string): Promise<Session>;
-    abstract createSession(): Promise<Session>;
+    abstract findSession(id: string): Promise<Game>;
+    abstract createSession(): Promise<Game>;
 }
