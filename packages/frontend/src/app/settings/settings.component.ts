@@ -62,7 +62,15 @@ export class SettingsComponent {
     async save() {
         console.log(`Enabling decks:`);
         console.dir(this.enabledDecks);
-        await this.game.playerSession.setEnabledDecks(this.enabledDecks);
+        try {
+            await this.game.playerSession.setEnabledDecks(this.enabledDecks);
+        } catch (e) {
+            console.error(`Failed to enable decks:`);
+            console.error(e);
+            alert(e.message);
+            return;
+        }
+
         this.matDialogRef.close();
         this.matSnackBar.open(`Game settings have been updated.`, undefined, {
             duration: 3000

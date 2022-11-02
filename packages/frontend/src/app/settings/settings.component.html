@@ -47,7 +47,7 @@
     <ng-container *ngFor="let deck of filteredDecks">
         <div>
             <mat-checkbox [checked]="isDeckEnabled(deck)" (change)="enableDeck(deck, $event.checked)" [disabled]="!isHost">
-                {{deck.name}}
+                {{deck.name}} [{{deck.promptCount}} black cards, {{deck.answerCount}} white cards]
             </mat-checkbox>
         </div>
     </ng-container>

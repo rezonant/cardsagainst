@@ -108,7 +108,7 @@ export class PlayerSession extends Interface.PlayerSession {
 
     @webrpc.Method()
     override async setEnabledDecks(decks: Interface.Deck[]) {
-        this.session.setEnabledDecks(this, decks);
+        return await this.session.setEnabledDecks(this, decks);
     }
 
     @webrpc.Method()
@@ -138,8 +138,8 @@ export interface PendingAnswer {
 export class Session extends Interface.Session {
     constructor(readonly service: CardsAgainstService, readonly id: string) {
         super();
-        this.availableAnswerCards = this.service.availableAnswers;
-        this.availablePrompts = this.service.availablePrompts;
+        this.availableAnswerCards = this.service.availableAnswers.slice();
+        this.availablePrompts = this.service.availablePrompts.slice();
         this.enabledDecks = service.decks;
         this.gameRules = {
             czarIs: 'a-player',
@@ -208,13 +208,20 @@ export class Session extends Interface.Session {
 
     pickPrompt() {
         let deck = this.availablePrompts.filter(x => this.isDeckEnabledById(x.deckId));
+        if (deck.length === 0) {
+            this.availablePrompts = this.service.availablePrompts.slice();
+            deck = this.availablePrompts.filter(x => this.isDeckEnabledById(x.deckId));
+        }
+
         let indexInDeck = Math.random() * deck.length | 0;
         let card = deck[indexInDeck];
         let indexInPool = this.availablePrompts.indexOf(card)
         this.availablePrompts.splice(indexInPool, 1);
-        
-        if (!card)
-            debugger;
+
+        if (!card) {
+            throw new Error(`Cannot pick prompt: No prompts available (even after reshuffling!). This deck must not have any prompts!`);
+        }
+
         return card;
     }
 
@@ -384,10 +391,24 @@ export class Session extends Interface.Session {
             throw new Error(`You must be the host of the game to change settings.`);
         }
 
+        if (decks.length === 0) {
+            throw new Error(`You must enable at least one deck!`);
+        }
+
         let realizedDecks = decks.map(x => this.service.decks.find(y => x.id === y.id));
         if (realizedDecks.some(x => !x))
             throw new Error(`One or more deck IDs are invalid!`);
-        
+
+        let answerCount = realizedDecks.map(x => x.answerCount).reduce((s, v) => s + v, 0);
+        let promptCount = realizedDecks.map(x => x.promptCount).reduce((s, v) => s + v, 0);
+
+        if (answerCount === 0)
+            throw new Error(`Your selected deck has no white (answer) cards! Add more decks.`);
+        if (answerCount < 50)
+            throw new Error(`Your selected deck must have at least 50 white (answer) cards. Your custom deck currently has ${answerCount} white cards.`);
+        if (promptCount === 0)
+            throw new Error(`Your selected deck has no black (prompt) cards! You must have at least one black card in your custom deck to play the game.`);
+
         console.log(`[CAH] ${realizedDecks.length} decks are now enabled.`);
         this.enabledDecks = realizedDecks;
 
@@ -430,11 +451,13 @@ export class CardsAgainstService extends Interface.CardsAgainstService {
 
         for (let set of sets) {
             let deckId = uuid();
-            let deck = {
+            let deck: Interface.Deck = {
                 id: deckId,
                 name: set.name,
                 description: set.description,
-                official: set.official
+                official: set.official,
+                promptCount: set.black.length,
+                answerCount: set.white.length
             };
             this.decks.push(deck)
             this.availablePrompts.push(...set.black.map(x => ({ id: uuid(), deckId, ...x })));

@@ -79,4 +79,6 @@ export interface Deck {
     name: string;
     description: string;
     official: boolean;
+    promptCount: number;
+    answerCount: number;
 }
