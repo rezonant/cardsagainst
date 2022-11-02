@@ -42,6 +42,7 @@ export interface JudgementRequest {
 export interface Answer {
     id: string;
     answerCards: AnswerCard[];
+    votes: string[];
 }
 
 @webrpc.Remotable()

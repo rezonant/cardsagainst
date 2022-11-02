@@ -236,7 +236,11 @@ export class Session extends Interface.Session {
                 id: uuid()
             };
             this.pendingAnswers.push(answer);
-            this.round.answers.push({ id: answer.id, answerCards: answer.answerCards.map(x => ({ id: '', text: '', deck: <Interface.Deck>{ id: '',  name: '' } })) });
+            this.round.answers.push({ 
+                id: answer.id, 
+                answerCards: answer.answerCards.map(x => ({ id: '', text: '', deck: <Interface.Deck>{ id: '',  name: '' } })),
+                votes: []
+            });
             houseAnswersAdded += 1;
         }
 
@@ -348,7 +352,11 @@ export class Session extends Interface.Session {
         
         let id = player.player.id;
         this.pendingAnswers.push({ id, player, answerCards });
-        this.round.answers.push({ id, answerCards: answerCards.map(x => ({ id: '', text: '', deck: <Interface.Deck>{ id: '',  name: '' } })) });
+        this.round.answers.push({ 
+            id, 
+            answerCards: answerCards.map(x => ({ id: '', text: '', deck: <Interface.Deck>{ id: '',  name: '' } })),
+            votes: []
+        });
         this.round.answers.sort((a, b) => Math.random() > 0.5 ? 1 : -1);
         this._roundChanged.next(this.round);
         
