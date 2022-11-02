@@ -280,7 +280,15 @@ export class GameComponent {
     }
 
     get isTsar() {
-        return this.tsar?.id === this.playerId;
+        if (!this.round)
+            return false;
+        
+        if (this.round.gameRules.czarIs === 'a-player')
+            return this.tsar?.id === this.playerId;
+        else if (this.round.gameRules.czarIs === 'the-players')
+            return true;
+        
+        return false;
     }
 
     get isTsarVoting() {
@@ -326,7 +334,14 @@ export class GameComponent {
         if (this.imJudging)
             return `You are the Czar. ${(this.allRevealed ? 'Choose a winner.' : `Reveal each answer as you read.`)}`;
         
-        return `${this.tsar.displayName} is the Czar.`;
+        if (this.round.gameRules.czarIs === 'a-player')
+            return `${this.tsar.displayName} is the Czar.`;
+        else if (this.round.gameRules.czarIs === 'the-players')
+            return `The players are the Czar.`;
+        else if (this.round.gameRules.czarIs === 'the-audience')
+            return `The audience is the Czar.`;
+        
+        return `No one is the Czar.`;
     }
 
     async revealAnswer(answer: Answer) {
