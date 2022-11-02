@@ -17,7 +17,7 @@ nav {
 }
 
 main {
-    flex-grow: 1;
+    //flex-grow: 1;
     display: flex;
     flex-direction: column;
 
@@ -33,4 +33,8 @@ main {
             color: #ceb1ff;
         }
     }
+}
+
+a {
+    text-decoration: none;
 }

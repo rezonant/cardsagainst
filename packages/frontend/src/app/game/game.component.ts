@@ -161,9 +161,9 @@ export class GameComponent {
         this.route.paramMap.subscribe(async params => {
             this.gameId = params.get('id');
             this.connect();
-            this.game.session.channel.stateLost.subscribe(async () => {
+            this.game.rpc.channel.stateLost.subscribe(async () => {
                 console.log(`State was lost!`);
-                this.game.service = await this.game.session.getRemoteService(CardsAgainstService);
+                this.game.cardsAgainst = await this.game.rpc.getRemoteService(CardsAgainstService);
                 await this.connect();
             });
         });
@@ -172,16 +172,21 @@ export class GameComponent {
     gameId: string;
     
     private async connect() {
-        this.session = await this.game.service.findSession(this.gameId);
+        this.session = await this.game.cardsAgainst.findSession(this.gameId);
 
         if (!this.session) {
-            alert(`Failed to find game!`);
+            alert(`Failed to find game! ${this.gameId}`);
             this.router.navigateByUrl('/');
         }
         this.session.roundChanged.subscribe(round => {
+            if (!round) {
+                console.error(`Server sent null round!`);
+                return;
+            }
+            
             let lastPhase = this.round?.phase;
 
-            if (lastPhase !== round.phase && round.phase === 'finished') {            
+            if (lastPhase !== round.phase && round.phase === 'finished') {
                 this.pickedCards = [];
             }
 
@@ -193,6 +198,7 @@ export class GameComponent {
 
         console.log(`Joining game as ${this.playerId} ("${this.playerName}")...`);
         this.player = await this.session.join(this.playerId, this.playerName);
+        this.game.session = this.session;
         this.game.playerSession = this.player;
         if (!this.player) {
             alert(`Failed to join game!`);
@@ -286,7 +292,11 @@ export class GameComponent {
     get judgingMessage() { 
         if (!this.round)
             return '';
-        return this.imJudging ? 'You are judging.' : `${this.tsar.displayName} is judging.`;
+        
+        if (this.imJudging)
+            return `You are judging. ${(this.allRevealed ? 'Choose a winner.' : `Reveal each answer as you read.`)}`;
+        
+        return `${this.tsar.displayName} is judging.`;
     }
 
     async revealAnswer(answer: Answer) {

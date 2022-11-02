@@ -1,3 +1,42 @@
+<mat-menu #userMenu="matMenu">
+  
+  <ng-container *ngIf="isInGame">
+    <button mat-menu-item (click)="invite()">
+      <mat-icon>share</mat-icon>
+      Invite Players
+    </button>
+    <button mat-menu-item (click)="showSettings()">
+      <mat-icon>settings</mat-icon>
+      Game Settings
+    </button>
+
+    <mat-divider></mat-divider>
+  </ng-container>
+
+  <button mat-menu-item (click)="changeName()">
+    <mat-icon>badge</mat-icon>
+    Change Name
+  </button>
+  <button mat-menu-item (click)="leaveGame()" *ngIf="isInGame">
+    <mat-icon>logout</mat-icon>
+    Leave Game
+  </button>
+  
+  <mat-divider></mat-divider>
+  <a target="_blank" href="https://en.wikipedia.org/wiki/Cards_Against_Humanity#Gameplay" mat-menu-item>
+    <mat-icon>gavel</mat-icon>
+    Rules
+  </a>
+  <a target="_blank" href="https://github.com/rezonant/cardsagainst" mat-menu-item>
+    <img class="github"
+      src="/assets/github.png" 
+      alt="GitHub" 
+      style="filter: invert(1); opacity: 0.6; position: relative; left: -1px;" 
+      />
+    About
+  </a>
+</mat-menu>
+
 <nav>
   <div class="logo with-intro">
     <i>Cards</i>
@@ -6,7 +45,12 @@
   </div>
   <div class="spacer">
   </div>
-  {{displayName}}
+  <div>
+    {{displayName}}
+  </div>
+  <button mat-icon-button [matMenuTriggerFor]="userMenu">
+    <mat-icon>more_vert</mat-icon>
+  </button>
 </nav>
 
 <main>
@@ -14,7 +58,7 @@
 </main>
 
 <footer>
-  <div class="player-list" *ngIf="players.length > 0">
+  <div class="player-list" *ngIf="isInGame && players.length > 0">
     <h1>Players</h1>
     <div class="player" *ngFor="let player of players" [class.me]="isMe(player)">
       <ng-container *ngIf="phase === 'answering'">

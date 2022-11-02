@@ -7,6 +7,7 @@
     display: flex;
     flex-direction: column;
     pointer-events: none;
+    gap: 2em;
 }
 
 .playfield {
@@ -19,19 +20,22 @@
         pointer-events: initial;
         transition: all 0.5s;
         aspect-ratio: 242 / 355;
-        border: 1px solid white;
         border-radius: 8px;
         display: inline-block;
         padding: 20px;
-        font-size: calc(4vh - 4px);
+        font-size: min(24pt, calc(4vh - 4px));
         min-height: 0;
         line-height: 0.9em;
         text-decoration: none;
         position: relative;
         overflow: hidden;
 
+        .logo {
+            font-size: 15px;
+        }
+
         &:hover {
-            z-index: 1000;
+            //z-index: 1000;
             transform: rotateZ(0deg) !important;
         }
 
@@ -40,10 +44,23 @@
             top: 0;
             left: 0;
             right: 0;
-            bottom: 0;
+            bottom: 1.25em;
             overflow-x: hidden;
             overflow-y: auto;
             padding: 0.5em;
+        }
+
+        .bottom-text {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            font-size: 50%;
+            padding: 0.5em;
+            opacity: 0.5;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         button.remove {
@@ -84,6 +101,7 @@
         &.prompt {
             background: black;
             color: white;
+            border: 2px solid #9e9e9e;
             .logo {
                 color: white;
             }
@@ -97,6 +115,7 @@
             background: white;
             color: black;
             width: 15vw;
+
             .logo {
                 color: black;
             }
@@ -115,36 +134,67 @@
             height: 37vh;
             width: auto;
         }
-        .card:first-child {
-            transform: rotateZ(-12deg);
-            transform-origin: bottom right;
+
+        &.stacked {
+            .card:nth-child(1) {
+                transform: rotateZ(2deg) !important;
+            }
+            .card:nth-child(2) {
+                position: absolute;
+                transform: translateY(45%) rotateZ(-2deg);
+                transform-origin: bottom left;
+                box-shadow: 0px 0px 5px black;
+                z-index: 1;
+                &:hover {
+                    //z-index: 1000;
+                    transform: translateY(45%) rotateZ(0deg) !important;
+                }
+            }
+            .card:nth-child(3) {
+                position: absolute;
+                transform: translateY(90%) rotateZ(2deg);
+                transform-origin: bottom left;
+                box-shadow: 0px 0px 5px black;
+                z-index: 2;
+                &:hover {
+                    //z-index: 1000;
+                    transform: translateY(90%) rotateZ(0deg) !important;
+                }
+            }
         }
-        .card:nth-child(2) {
-            position: relative;
-            left: -10vw;
-            transform: rotateZ(6deg);
-            transform-origin: bottom left;
-            box-shadow: 0px 0px 5px black;
-            z-index: 1;
-        }
-        .card:nth-child(3) {
-            position: relative;
-            left: -20vw;
-            transform: rotateZ(24deg);
-            transform-origin: bottom left;
-            box-shadow: 0px 0px 5px black;
-            z-index: 2;
-        }
-        .card:nth-child(4) {
-            position: relative;
-            left: -32vw;
-            transform: rotateZ(55deg);
-            transform-origin: bottom left;
-            box-shadow: 0px 0px 5px black;
-            z-index: 3;
-        }
-        .card:last-child:first-child {
-            transform: rotateZ(2deg) !important;
+
+        &.spread {
+            .card:first-child {
+                transform: rotateZ(-12deg);
+                transform-origin: bottom right;
+            }
+            .card:nth-child(2) {
+                position: relative;
+                left: -10vw;
+                transform: rotateZ(6deg);
+                transform-origin: bottom left;
+                box-shadow: 0px 0px 5px black;
+                z-index: 1;
+            }
+            .card:nth-child(3) {
+                position: relative;
+                left: -20vw;
+                transform: rotateZ(24deg);
+                transform-origin: bottom left;
+                box-shadow: 0px 0px 5px black;
+                z-index: 2;
+            }
+            .card:nth-child(4) {
+                position: relative;
+                left: -32vw;
+                transform: rotateZ(55deg);
+                transform-origin: bottom left;
+                box-shadow: 0px 0px 5px black;
+                z-index: 3;
+            }
+            .card:last-child:first-child {
+                transform: rotateZ(2deg) !important;
+            }
         }
     }
 
@@ -153,6 +203,10 @@
         margin-bottom: 1em;
         flex-wrap: wrap;
         
+        &.above {
+            z-index: 1000;
+        }
+
         .card {
             flex-grow: initial;
             flex-shrink: initial;
@@ -160,6 +214,7 @@
             font-size: min(3vh, 3vw);
             max-width: 5em;
             transform: translateY(0px);
+            box-shadow: 0px 0px 5px black;
             
             &:hover {
                 transform: translateY(-8px);
@@ -282,11 +337,11 @@
     }
 
     @media (orientation: portrait) and (max-width: 450px) {
-        .playfield {
+        cah-playfield {
             &.shared {
                 margin-top: 5em;
 
-                .card {
+                cah-card {
                     height: 25vh;
                     font-size: 2vh;
                 }
@@ -298,8 +353,8 @@
                 justify-content: flex-start;
                 flex-wrap: nowrap;
 
-                .card.answer {
-                    min-width: 25vw;
+                cah-card.answer {
+                    min-width: 13vw;
                     flex-shrink: 0;
                     font-size: 14pt;
                 }
@@ -314,4 +369,21 @@
     margin: 1em;
     z-index: 100;
     pointer-events: initial;
+    // background-color: rgba(255,255,255,1);
+    // color: black;
+    // box-shadow: 0px 0px 5px black;
+    border-radius: 8px;
+    padding: 0.5em;
+    margin: 1em auto;
+    width: 15em;
+    max-width: calc(100% - 3em);
+}
+
+:host {
+    margin-top: 8em;
+}
+@media (min-width: 930px) {
+    :host {
+        margin-top: 2em;
+    }
 }

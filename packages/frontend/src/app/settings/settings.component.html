@@ -1,0 +1,65 @@
+<h1>Game Settings</h1>
+
+<ng-container *ngIf="loading">
+    <p>Just a second...</p>
+</ng-container>
+<ng-container *ngIf="!loading">
+    <p>
+        Cards Against The Internet supports several settings to customize your game.
+        Note that only the Host can change these rules, but you can reference them 
+        at any time.
+    </p>
+
+    <h2>Game Rules</h2>
+
+    <mat-form-field appearance="outline">
+        <mat-label>A leaving player...</mat-label>
+        <mat-select [(ngModel)]="gameRules.leavingPlayerWill">
+            <mat-option value="keeps-hand">Keeps hand</mat-option>
+            <mat-option value="loses-hand">Loses hand</mat-option>
+            <mat-option value="returns-hand">Returns hand</mat-option>
+        </mat-select>
+    </mat-form-field>
+
+    <h2>Decks</h2>
+
+    <button mat-button (click)="enableAllDecks()" [disabled]="!isHost">
+        Enable All
+    </button>
+
+    <button mat-button (click)="disableAllDecks()" [disabled]="!isHost">
+        Disable All
+    </button>
+
+    <mat-form-field appearance="outline">
+        <span matPrefix>
+            <mat-icon>search</mat-icon>
+        </span>
+        <mat-label>Search</mat-label>
+        <input matInput [(ngModel)]="deckSearch" />
+        <span matSuffix *ngIf="deckSearch">
+            <button mat-icon-button>
+                <mat-icon>clear</mat-icon>
+            </button>
+        </span>
+    </mat-form-field>
+
+    <ng-container *ngFor="let deck of filteredDecks">
+        <div>
+            <mat-checkbox [checked]="isDeckEnabled(deck)" (change)="enableDeck(deck, $event.checked)" [disabled]="!isHost">
+                {{deck.name}}
+            </mat-checkbox>
+        </div>
+    </ng-container>
+
+    <br/>
+    <mat-divider></mat-divider>
+    <br/>
+
+    <button mat-raised-button color="primary" (click)="save()" [disabled]="!isHost">
+        Save &amp; Apply
+    </button>
+
+    &nbsp;
+    Warning! The current round may be lost!
+</ng-container>

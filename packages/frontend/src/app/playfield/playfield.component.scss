@@ -1,0 +1,24 @@
+:host {
+    display: flex;
+    flex-direction: row;
+    align-items: space-around;
+    justify-content: center;
+}
+
+:host.shared {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+:host.hand {
+    gap: 1em;
+    margin-bottom: 1em;
+    flex-wrap: wrap;
+}
+
+
+:host.judging {
+    
+}
