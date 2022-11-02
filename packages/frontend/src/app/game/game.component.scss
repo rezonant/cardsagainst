@@ -90,6 +90,15 @@
             z-index: 1; 
         }
 
+        &.answer.eliminated {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        &.answer.voted {
+            background: lightblue;
+        }
+
         &.disabled {
             opacity: 0.5;
             pointer-events: none;

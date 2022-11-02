@@ -13,7 +13,7 @@
                 </div>
             </cah-card>
             
-            <ng-container *ngIf="!hasVoted">
+            <ng-container *ngIf="!hasAnswered">
                 <cah-card class="answer" *ngFor="let answer of pickedCards">
                     <button mat-icon-button class="remove" (click)="unpickCard(answer)">
                         <mat-icon>close</mat-icon>
@@ -30,13 +30,13 @@
             </ng-container>
         </cah-playfield>
 
-        <div class="message" *ngIf="!hasVoted && isTsar && !isTsarVoting">
+        <div class="message" *ngIf="!hasAnswered && isTsar && !isTsarVoting">
             You are the Czar. Waiting for players to pick their answers...
         </div>
-        <div class="message" *ngIf="hasVoted">
+        <div class="message" *ngIf="hasAnswered">
             Waiting for other players to pick their answers...
         </div>
-        <cah-playfield class="hand" [class.above]="!allPicked" *ngIf="hand && !hasVoted && (!isTsar || isTsarVoting)">
+        <cah-playfield class="hand" [class.above]="!allPicked" *ngIf="hand && !hasAnswered && (!isTsar || isTsarVoting)">
             <ng-container *ngFor="let card of hand">
                 <cah-card class="answer" [class.disabled]="allPicked" *ngIf="!isPicked(card)">
                     <a href="javascript:;" (click)="pickCard(card)">
@@ -61,7 +61,7 @@
 
             <div class="answer-sets" [class.pick-one]="round.pick === 1" [class.pick-two]="round.pick === 2">
                 <div class="answer-set" *ngFor="let answer of answerSets">
-                    <div class="card answer" *ngFor="let answerCard of answer.answerCards" [class.unrevealed]="answerCard.text === ''">
+                    <div class="card answer" *ngFor="let answerCard of answer.answerCards" [class.unrevealed]="answerCard.text === ''" [class.eliminated]="answer.eliminated" [class.voted]="votedForAnswer(answer)">
                         <div class="logo" *ngIf="answerCard.text === ''">
                             <i>Cards</i>
                             <i>Against</i>
@@ -71,13 +71,23 @@
                             {{answerCard.text}}
                         </div>
 
-                        <ng-container *ngIf="isTsar">
-                            <button class="bottom" mat-raised-button *ngIf="isLastCardOfAnswer(answer, answerCard) && allRevealed" color="primary" (click)="pickAnswer(answer)">
-                                Pick
-                            </button>
-                            <button class="bottom" mat-raised-button *ngIf="!answerCard.text" color="primary" (click)="revealAnswer(answer)">
-                                Reveal
-                            </button>
+                        <div class="bottom-text" *ngIf="answer.eliminated">
+                            Eliminated
+                        </div>
+                        <ng-container *ngIf="isTsar && !answer.eliminated">
+                            <ng-container *ngIf="hasVoted">
+                                <div class="bottom-text" *ngIf="votedForAnswer(answer)">
+                                    You voted for this
+                                </div>
+                            </ng-container>
+                            <ng-container *ngIf="!hasVoted">
+                                <button class="bottom" mat-raised-button *ngIf="isLastCardOfAnswer(answer, answerCard) && allRevealed" color="primary" (click)="pickAnswer(answer)">
+                                    Pick
+                                </button>
+                                <button class="bottom" mat-raised-button *ngIf="!answerCard.text && isRevealer" color="primary" (click)="revealAnswer(answer)">
+                                    Reveal
+                                </button>
+                            </ng-container>
                         </ng-container>
                     </div>
                 </div>
@@ -108,7 +118,7 @@
             <ng-container *ngIf="isTsar">
                 <br/>
                 <br/>
-                <button mat-raised-button color="primary" [disabled]="!isTsar" (click)="startNextRound()">
+                <button mat-raised-button color="primary" [disabled]="!canStartRound" (click)="startNextRound()">
                     Start next round
                 </button>
             </ng-container>

@@ -1,6 +1,6 @@
 import { Injectable } from "@angular/core";
 import { RPCSession } from "@astronautlabs/webrpc";
-import { CardsAgainstService, PlayerSession, Round, Session } from "@cardsagainst/backend";
+import { CardsAgainstService, PlayerSession, Round, Game } from "@cardsagainst/backend";
 import { environment } from "src/environments/environment";
 
 @Injectable()
@@ -11,7 +11,7 @@ export class GameService {
 
     rpc: RPCSession | undefined;
     cardsAgainst: CardsAgainstService | undefined;
-    session: Session;
+    session: Game;
     playerSession: PlayerSession;
     ready: Promise<void>;
     round: Round;

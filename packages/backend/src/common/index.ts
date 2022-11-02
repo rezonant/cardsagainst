@@ -43,6 +43,7 @@ export interface Answer {
     id: string;
     answerCards: AnswerCard[];
     votes: string[];
+    eliminated?: boolean;
 }
 
 @webrpc.Remotable()

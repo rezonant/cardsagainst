@@ -171,7 +171,7 @@ export class Game extends Interface.Game {
 
     playerMap = new Map<string, PlayerSession>();
     round: Interface.Round;
-    previousRounds: Interface.Round[];
+    previousRounds: Interface.Round[] = [];
     pendingAnswers: PendingAnswer[] = [];
     host: PlayerSession;
 
@@ -250,13 +250,14 @@ export class Game extends Interface.Game {
 
         this.round.phase = 'judging';
         this._roundChanged.next(this.round);
+        this.checkForAllAnswerVotes();
     }
 
     startNextRound(player: PlayerSession) {
         if (this.round.phase !== 'finished')
             throw new Error(`The current round isn't finished yet!`);
         if (this.round.tsarPlayerId !== player.player.id)
-            throw new Error(`You must be the host to start the next round`);
+            throw new Error(`You must be the Czar to start the next round`);
 
         this.startRound();
     }
@@ -340,13 +341,7 @@ export class Game extends Interface.Game {
         this._roundChanged.next(this.round);
     }
 
-    async pickAnswer(player: PlayerSession, answer: Interface.Answer) {
-        if (this.round.phase !== 'judging')
-            throw new Error(`It's not time to pick an answer!`);
-
-        if (this.round.answers.some(x => !x.answerCards))
-            throw new Error(`Not all answers have been revealed yet!`);
-
+    async setAnswer(answer: Interface.Answer) {
         let pendingAnswer = this.pendingAnswers.find(x => x.id === answer.id);
         this.round.phase = 'finished';
         this.round.winner = pendingAnswer.player?.player;
@@ -354,11 +349,65 @@ export class Game extends Interface.Game {
         this._roundChanged.next(this.round);
     }
 
+    async pickAnswer(player: PlayerSession, answer: Interface.Answer) {
+        if (!player)
+            throw new Error(`Must pass a player!`);
+
+        if (this.round.phase !== 'judging')
+            throw new Error(`It's not time to pick an answer!`);
+
+        if (this.round.answers.some(x => !x.answerCards))
+            throw new Error(`Not all answers have been revealed yet!`);
+
+        if (this.gameRules.czarIs === 'a-player' && player.player.id !== this.round.tsarPlayerId)
+            throw new Error(`You are not the Czar!`);
+
+        if (this.gameRules.czarIs === 'the-audience')
+            throw new Error(`You are not the Czar! The Audience is the Czar!`);
+        
+        if (this.gameRules.czarIs === 'a-player') {
+            this.setAnswer(answer);
+        } else {
+            // Czar is "the players"
+            let existingAnswer = this.round.answers.find(x => x.id === answer.id);
+            existingAnswer.votes.push(player.player.id);
+            this._roundChanged.next(this.round);
+            this.checkForAllAnswerVotes();
+        }
+    }
+
+    get voterIds() {
+        return this.round.answers.map(x => x.votes).flat();
+    }
+
+    checkForAllAnswerVotes() {
+        if (this.players.length > 0 && this.players.every(x => this.voterIds.includes(x.player.id))) {
+            this.pickAnswerByVote();
+        }
+    }
+
+    pickAnswerByVote() {
+        let maxVotes = this.round.answers.reduce((max, answer) => Math.max(max, answer.votes.length), 0);
+        let winners = this.round.answers.filter(x => x.votes.length === maxVotes);
+
+        if (winners.length > 1) {
+            // Instant run off
+            this.round.answers.filter(x => !winners.includes(x)).forEach(x => x.eliminated = true);
+            this.round.answers.forEach(answer => answer.votes = []);
+            this.sendAnnouncement(`Instant runoff! Pick from ${winners.length} choices which each got ${maxVotes} ${maxVotes === 1 ? 'vote' : 'votes'} last round.`)
+            this._roundChanged.next(this.round);
+        } else if (winners.length === 1) {
+            this.setAnswer(winners[0]);
+        } else {
+            console.error(`[Game ${this.id}] BUG: Nothing won during czar-is:the-players`);
+        }
+    }
+
     async submitPlayerAnswer(player: PlayerSession, answerCards: Interface.AnswerCard[]) {
         if (this.pendingAnswers.some(x => x.player === player))
             throw new Error(`You've already submitted an answer`);
 
-        if (player.player.id === this.round.tsarPlayerId && !this.czarIsPlaying)
+        if (this.round.gameRules.czarIs === 'a-player' && player.player.id === this.round.tsarPlayerId && !this.czarIsPlaying)
             throw new Error(`You are the Czar, and the Czar cannot play a card right now`);
         
         console.log(`[CAH] Player ${player.player.displayName} submitted an answer.`);
@@ -380,6 +429,9 @@ export class Game extends Interface.Game {
     }
 
     get czarIsPlaying() {
+        if (this.gameRules.czarIs !== 'a-player')
+            return true;
+        
         return this.players.length < this.gameRules.czarPlaysUpTo;
     }
 

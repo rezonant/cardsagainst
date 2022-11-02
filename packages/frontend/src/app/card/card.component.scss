@@ -23,6 +23,10 @@
         pointer-events: none;
     }
 
+    &.eliminated {
+        border: 1px solid red;
+    }
+    
     // hyphens: auto;
     // word-break: break-word;
     // hyphenate-character: "-";

@@ -1,7 +1,7 @@
 import { Component } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
 import { RPCSession } from "@astronautlabs/webrpc";
-import { Answer, AnswerCard, CardsAgainstService, PlayerSession, Round, Session } from "@cardsagainst/backend";
+import { Answer, AnswerCard, CardsAgainstService, PlayerSession, Round, Game } from "@cardsagainst/backend";
 import { GameService } from "../game.service";
 import { Card, Player, timeout } from "../types";
 import { v4 as uuid } from 'uuid';
@@ -146,7 +146,7 @@ export class GameComponent {
 
     private playerId: string;
     private playerName: string;
-    private session: Session;
+    private session: Game;
     private player: PlayerSession;
 
     async ngOnInit() {
@@ -268,15 +268,34 @@ export class GameComponent {
         return this.unansweredPlayers.map(x => x.displayName).join(', ');
     }
 
-    get hasVoted() {
+    votedForAnswer(answer: Answer) {
+        return answer.votes.includes(this.playerId);
+    }
+
+    get hasAnswered() {
         if (!this.round)
             return false;
         return this.round.answers.find(x => x.id === this.playerId);
     }
+
+    get hasVoted() {
+        if (!this.round?.answers)
+            return false;
+        return this.round.answers.some(answer => answer.votes.includes(this.playerId));
+    }
+
     get tsar() {
         if (!this.round)
             return null;
         return this.round.players.find(x => x.id === this.round.tsarPlayerId);
+    }
+
+    get canStartRound() {
+        return this.tsar?.id === this.playerId;
+    }
+    
+    get isRevealer() {
+        return this.tsar?.id === this.playerId;
     }
 
     get isTsar() {
@@ -292,6 +311,12 @@ export class GameComponent {
     }
 
     get isTsarVoting() {
+        if (!this.round)
+            return false;
+        
+        if (this.round.gameRules.czarIs === 'the-players')
+            return true;
+        
         return this.round.players.length < this.round.gameRules.czarPlaysUpTo;
     }
 
@@ -331,17 +356,23 @@ export class GameComponent {
         if (!this.round)
             return '';
         
+        let czarRole = `Czar`;
+
+        if (!this.allRevealed && this.round.gameRules.czarIs !== 'a-player')
+            czarRole = `Revealer`;
+
         if (this.imJudging)
-            return `You are the Czar. ${(this.allRevealed ? 'Choose a winner.' : `Reveal each answer as you read.`)}`;
+            return `You are the ${czarRole}. ${(this.allRevealed ? 'Choose a winner.' : `Reveal each answer as you read.`)}`;
         
+
         if (this.round.gameRules.czarIs === 'a-player')
-            return `${this.tsar.displayName} is the Czar.`;
+            return `${this.tsar.displayName} is the ${czarRole}.`;
         else if (this.round.gameRules.czarIs === 'the-players')
-            return `The players are the Czar.`;
+            return `All players must vote.`;
         else if (this.round.gameRules.czarIs === 'the-audience')
-            return `The audience is the Czar.`;
+            return `The audience is the ${czarRole}.`;
         
-        return `No one is the Czar.`;
+        return `No one is the ${czarRole}.`;
     }
 
     async revealAnswer(answer: Answer) {
