@@ -15,7 +15,7 @@ export class HomeComponent {
 
     }
     async startGame() {
-        let session = await this.game.service.createSession();
+        let session = await this.game.cardsAgainst.createSession();
         let gameId = await session.getId();
     
         console.log(`Created game ${gameId} successfully.`);

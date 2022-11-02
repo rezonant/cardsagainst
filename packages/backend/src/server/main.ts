@@ -22,11 +22,15 @@ export interface CardSet {
 }
 
 export interface WhiteCard {
+    id: string;
+    deckId: string;
     text: string;
     pack: number;
 }
 
 export interface BlackCard {
+    id: string;
+    deckId: string;
     text: string;
     pick: number;
     pack: number;
@@ -96,6 +100,22 @@ export class PlayerSession extends Interface.PlayerSession {
         return this.answerCards;
     }
 
+    
+    @webrpc.Method()
+    override async leaveGame(): Promise<void> {
+        this.session.playerIsLeaving(this);
+    }
+
+    @webrpc.Method()
+    override async setEnabledDecks(decks: Interface.Deck[]) {
+        return await this.session.setEnabledDecks(this, decks);
+    }
+
+    @webrpc.Method()
+    override async setGameRules(rules: Interface.GameRules) {
+        await this.session.setGameRules(this, rules);
+    }
+
     addCard(card: Interface.AnswerCard) {
         this.answerCards.push(card);
     }
@@ -118,8 +138,16 @@ export interface PendingAnswer {
 export class Game extends Interface.Game {
     constructor(readonly service: CardsAgainstService, readonly id: string) {
         super();
-        this.availableAnswerCards = this.service.availableAnswers;
-        this.availablePrompts = this.service.availablePrompts;
+        this.availableAnswerCards = this.service.availableAnswers.slice();
+        this.availablePrompts = this.service.availablePrompts.slice();
+        this.enabledDecks = service.decks;
+        this.gameRules = {
+            czarIs: 'a-player',
+            czarCanDeclareADraw: false,
+            czarPlaysUpTo: 0,
+            housePlaysUpTo: 3,
+            leavingPlayerWill: "keep-hand"
+        };
     }
 
     playerMap = new Map<string, PlayerSession>();
@@ -147,6 +175,8 @@ export class Game extends Interface.Game {
             this.service.deleteGame(this);
             return;
         }
+
+
 
         if (this.round) {
             this.round.players = this.round.players.filter(x => x.id !== player.player.id);
@@ -178,9 +208,21 @@ export class Game extends Interface.Game {
     availablePrompts: BlackCard[];
 
     pickPrompt() {
-        let cardIndex = Math.random() * this.availablePrompts.length | 0;
-        let card = this.availablePrompts[cardIndex];
-        this.availablePrompts.splice(cardIndex, 1);
+        let deck = this.availablePrompts.filter(x => this.isDeckEnabledById(x.deckId));
+        if (deck.length === 0) {
+            this.availablePrompts = this.service.availablePrompts.slice();
+            deck = this.availablePrompts.filter(x => this.isDeckEnabledById(x.deckId));
+        }
+
+        let indexInDeck = Math.random() * deck.length | 0;
+        let card = deck[indexInDeck];
+        let indexInPool = this.availablePrompts.indexOf(card)
+        this.availablePrompts.splice(indexInPool, 1);
+
+        if (!card) {
+            throw new Error(`Cannot pick prompt: No prompts available (even after reshuffling!). This deck must not have any prompts!`);
+        }
+
         return card;
     }
 
@@ -190,8 +232,15 @@ export class Game extends Interface.Game {
 
     maxPreviousRounds = 50;
 
+    /**
+     * Start a new round immediately, regardless of what phase we are currently in.
+     */
     startRound() {
         let prompt = this.pickPrompt();
+        if (!prompt) {
+            console.error(`[CAH] Failed to locate a prompt for this round! There were ${this.availablePrompts.length} unused prompts.`);
+            throw new Error(`Could not find a prompt! I guess the game is over?`);
+        }
 
         this.pendingAnswers = [];
         console.log(`[CAH] Round starting: ${prompt.text}`);
@@ -207,14 +256,21 @@ export class Game extends Interface.Game {
             phase: 'answering',
             players: this.players.map(x => x.player),
             prompt: prompt.text,
+            promptDeck: this.service.decks.find(x => x.id === prompt.deckId),
             pick: prompt.pick,
             tsarPlayerId: this.players[(this.tsarPlayerIndex = (this.tsarPlayerIndex + 1) % this.players.length)].player.id,
+            gameRules: this.gameRules,
+            enabledDecks: this.enabledDecks,
             winner: undefined
         }
         this._roundChanged.next(this.round);
 
         for (let player of this.players)
             this.dealCards(player);
+    }
+
+    async playerIsLeaving(player: PlayerSession) {
+        this.removePlayer(player);
     }
 
     async revealAnswer(player: PlayerSession, revealedAnswer: Interface.Answer) {
@@ -247,7 +303,7 @@ export class Game extends Interface.Game {
         
         let id = player.player.id;
         this.pendingAnswers.push({ id, player, answerCards });
-        this.round.answers.push({ id, answerCards: answerCards.map(x => ({ id: '', text: '' })) });
+        this.round.answers.push({ id, answerCards: answerCards.map(x => ({ id: '', text: '', deck: <Interface.Deck>{ id: '',  name: '' } })) });
         this.round.answers.sort((a, b) => Math.random() > 0.5 ? 1 : -1);
         this._roundChanged.next(this.round);
         
@@ -286,6 +342,8 @@ export class Game extends Interface.Game {
             console.log(`[Game ${this.id}] Player ${id} ("${displayName}") has joined.`);
         } else {
             console.log(`[Game ${this.id}] Player ${id} ("${displayName}") has rejoined.`);
+
+            session.player.displayName = displayName;
         }
 
         session.addConnection(RPCSession.current());
@@ -306,16 +364,92 @@ export class Game extends Interface.Game {
     dealCards(player: PlayerSession) {
         let dealt = 0;
         while (player.answerCards.length < 10) {
-            let index = Math.random() * this.availableAnswerCards.length | 0;
-            let card = this.availableAnswerCards[index];
+            let deck = this.availableAnswerCards.filter(x => this.isDeckEnabledById(x.deck.id));
+            let deckIndex = Math.random() * deck.length | 0;
+            let card = deck[deckIndex];
+            let poolIndex = this.availableAnswerCards.indexOf(card);
+            this.availableAnswerCards.splice(poolIndex, 1);
+            
             player.addCard(card);
             dealt += 1;
-            this.availableAnswerCards.splice(index, 1);
         }
 
         console.log(`[CAH] Dealt ${dealt} cards to ${player.player.displayName}. Player now has ${player.answerCards.length} cards.`);
         player.sendCards();
     }
+    
+    enabledDecks: Interface.Deck[] = [];
+    gameRules: Interface.GameRules;
+
+    @webrpc.Method()
+    override async getEnabledDecks(): Promise<Interface.Deck[]> {
+        return this.enabledDecks;
+    }
+
+    async setGameRules(player: PlayerSession, rules: Interface.GameRules) {
+        if (this.host !== player)
+            throw new Error(`Only the host can change the rules of the game.`);
+        this.gameRules = rules;
+        this.round.gameRules = rules;
+        this._roundChanged.next(this.round);
+    }
+
+    @webrpc.Method()
+    override async getGameRules(): Promise<Interface.GameRules> {
+        return this.gameRules;
+    }
+
+    async setEnabledDecks(player: PlayerSession, decks: Interface.Deck[]) {
+        if (this.round.host.id !== player.player.id) {
+            throw new Error(`You must be the host of the game to change settings.`);
+        }
+
+        if (decks.length === 0) {
+            throw new Error(`You must enable at least one deck!`);
+        }
+
+        let realizedDecks = decks.map(x => this.service.decks.find(y => x.id === y.id));
+        if (realizedDecks.some(x => !x))
+            throw new Error(`One or more deck IDs are invalid!`);
+
+        let answerCount = realizedDecks.map(x => x.answerCount).reduce((s, v) => s + v, 0);
+        let promptCount = realizedDecks.map(x => x.promptCount).reduce((s, v) => s + v, 0);
+
+        if (answerCount === 0)
+            throw new Error(`Your selected deck has no white (answer) cards! Add more decks.`);
+        if (answerCount < 50)
+            throw new Error(`Your selected deck must have at least 50 white (answer) cards. Your custom deck currently has ${answerCount} white cards.`);
+        if (promptCount === 0)
+            throw new Error(`Your selected deck has no black (prompt) cards! You must have at least one black card in your custom deck to play the game.`);
+
+        console.log(`[CAH] ${realizedDecks.length} decks are now enabled.`);
+        this.enabledDecks = realizedDecks;
+
+        // Return all disabled cards from players' hands and deal replacements
+
+        for (let player of this.players) {
+            let returned = player.answerCards.filter(x => !this.isDeckEnabledById(x.deck.id));
+            this.availableAnswerCards.push(...returned);
+            player.answerCards = player.answerCards.filter(x => this.isDeckEnabledById(x.deck.id));
+            this.dealCards(player);
+        }
+
+        if (this.round?.promptDeck?.id && !this.isDeckEnabledById(this.round.promptDeck.id)) {
+            console.log(`[CAH] Current prompt is outside of enabled decks, starting a new round!`);
+            this.startRound();
+        }
+
+        this.round.enabledDecks = this.enabledDecks;
+        this._roundChanged.next(this.round);
+    }
+
+    isDeckEnabledById(id: string) {
+        return this.enabledDecks
+            .map(x => x.id)
+            .includes(id)
+        ;
+    }
+
 }
 
 @WebService({
@@ -329,19 +463,35 @@ export class CardsAgainstService extends Interface.CardsAgainstService {
         let sets: CardSet[] = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'cah-cards-full.json')).toString('utf-8'));
 
         for (let set of sets) {
-            this.availablePrompts.push(...set.black);
-            this.availableAnswers.push(...set.white.map(x => ({ id: uuid(), ...x })));
+            let deckId = uuid();
+            let deck: Interface.Deck = {
+                id: deckId,
+                name: set.name,
+                description: set.description,
+                official: set.official,
+                promptCount: set.black.length,
+                answerCount: set.white.length
+            };
+            this.decks.push(deck)
+            this.availablePrompts.push(...set.black.map(x => ({ id: uuid(), deckId, ...x })));
+            this.availableAnswers.push(...set.white.map(x => ({ id: uuid(), deck, deckId, ...x })));
         }
 
-        // this.availablePrompts = this.availablePrompts.filter(x => x.pick > 1);
+        //this.availablePrompts = this.availablePrompts.filter(x => x.pick > 1);
         console.log(`Loaded ${this.availablePrompts.length} prompts and ${this.availableAnswers.length} answers.`);
     }
 
+    decks: Interface.Deck[] = [];
     availablePrompts: BlackCard[] = [];
     availableAnswers: Interface.AnswerCard[] = [];
 
     deleteGame(game: Game) {
         this.sessions.delete(game.id);
+    }
+
+    @webrpc.Method()
+    override async getDecks() {
+        return this.decks;
     }
 
     @Get()

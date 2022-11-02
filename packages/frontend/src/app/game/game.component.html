@@ -3,13 +3,18 @@
 </ng-container>
 <ng-container *ngIf="round">
     <ng-container *ngIf="round.phase === 'answering'">
-        <div class="playfield shared" *ngIf="round.prompt">
-            <div class="card prompt">
-            {{round.prompt}}
-            </div>
+        <cah-playfield class="shared stacked" *ngIf="round.prompt">
+            <cah-card class="prompt">
+                <div class="text">
+                    {{round.prompt}}
+                </div>
+                <div class="bottom-text">
+                    {{round.promptDeck.name}}
+                </div>
+            </cah-card>
             
             <ng-container *ngIf="!hasVoted">
-                <div class="card answer" *ngFor="let answer of pickedCards">
+                <cah-card class="answer" *ngFor="let answer of pickedCards">
                     <button mat-icon-button class="remove" (click)="unpickCard(answer)">
                         <mat-icon>close</mat-icon>
                     </button>
@@ -21,22 +26,26 @@
                     <button class="bottom" mat-raised-button *ngIf="isLastPicked(answer) && allPicked" color="primary" (click)="submitAnswer()">
                         Submit Answer
                     </button>
-                </div>
+                </cah-card>
             </ng-container>
-        </div>
+        </cah-playfield>
 
-        <div class="playfield hand" *ngIf="hand">
+        <cah-playfield class="hand" [class.above]="!allPicked" *ngIf="hand">
             <ng-container *ngFor="let card of hand">
-                <a href="javascript:;" *ngIf="!isPicked(card)" class="card answer" (click)="pickCard(card)" [class.disabled]="allPicked">
-                    <div class="text">
-                        {{card.text}}
-                    </div>
-                </a>
+                <cah-card class="answer" [class.disabled]="allPicked" *ngIf="!isPicked(card)">
+                    <a href="javascript:;" (click)="pickCard(card)">
+                        <div class="text">
+                            {{card.text}}
+                        </div>
+                        <div class="bottom-text">
+                            {{card.deck.name}}
+                        </div>
+                    </a>
+                </cah-card>
             </ng-container>
-        </div>
+        </cah-playfield>
     </ng-container>
     <ng-container *ngIf="round.phase === 'judging'">
-        <div class="message">{{judgingMessage}}</div>
         <div class="playfield judging" *ngIf="round.prompt">
             <div class="card prompt">
                 <div class="text">
@@ -48,9 +57,9 @@
                 <div class="answer-set" *ngFor="let answer of answerSets">
                     <div class="card answer" *ngFor="let answerCard of answer.answerCards" [class.unrevealed]="answerCard.text === ''">
                         <div class="logo" *ngIf="answerCard.text === ''">
-                            Cards<br/>
-                            Against<br/>
-                            The Internet
+                            <i>Cards</i>
+                            <i>Against</i>
+                            <i>The Internet</i>
                         </div>
                         <div class="text" *ngIf="answerCard.text !== ''">
                             {{answerCard.text}}
@@ -68,29 +77,35 @@
                 </div>
             </div>
         </div>
+        <div class="message">{{judgingMessage}}</div>
     </ng-container>
     
     <ng-container *ngIf="round.phase === 'finished'">
-        <div class="message">
-            {{winningMessage}}<br/><br/>
-            <button mat-raised-button color="primary" [disabled]="!isTsar" (click)="startNextRound()">
-                <ng-container *ngIf="isTsar">
-                    Start next round
-                </ng-container>
-                <ng-container *ngIf="!isTsar">
-                    Waiting for next round...
-                </ng-container>
-            </button>
-        </div>
-        <div class="playfield shared" *ngIf="round.prompt">
+        <div class="playfield shared stacked" *ngIf="round.prompt">
             <div class="card prompt">
                 <div class="text">
                     {{round.prompt}}
                 </div>
+
+                <div class="bottom-text">
+                    {{round.promptDeck.name}}
+                </div>
             </div>
             <div class="card answer" *ngFor="let answerCard of round.winningAnswer.answerCards">
-                {{answerCard.text}}
+                <div class="text">
+                    {{answerCard.text}}
+                </div>
             </div>
+        </div>
+        <div class="message">
+            {{winningMessage}}
+            <ng-container *ngIf="isTsar">
+                <br/>
+                <br/>
+                <button mat-raised-button color="primary" [disabled]="!isTsar" (click)="startNextRound()">
+                    Start next round
+                </button>
+            </ng-container>
         </div>
     </ng-container>
 </ng-container>
