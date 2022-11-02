@@ -1,3 +1,7 @@
+<a class="close" mat-icon-button (click)="close()">
+    <mat-icon>close</mat-icon>
+</a>
+
 <h1>Game Settings</h1>
 
 <ng-container *ngIf="loading">
@@ -10,56 +14,120 @@
         at any time.
     </p>
 
-    <h2>Game Rules</h2>
+    <mat-tab-group>
+        <mat-tab label="Rules">
+            <div class="form-field-row">
+                <mat-form-field appearance="outline">
+                    <mat-label>House cards up to</mat-label>
+                    <input type="text" matInput [(ngModel)]="gameRules.housePlaysUpTo" />
+                    <span matSuffix>players</span>
+                    <mat-hint>House plays an answer for each missing player</mat-hint>
+                </mat-form-field>
 
-    <mat-form-field appearance="outline">
-        <mat-label>A leaving player...</mat-label>
-        <mat-select [(ngModel)]="gameRules.leavingPlayerWill">
-            <mat-option value="keeps-hand">Keeps hand</mat-option>
-            <mat-option value="loses-hand">Loses hand</mat-option>
-            <mat-option value="returns-hand">Returns hand</mat-option>
-        </mat-select>
-    </mat-form-field>
+                <mat-form-field appearance="outline">
+                    <mat-label>Czar plays up to</mat-label>
+                    <input type="text" matInput [(ngModel)]="gameRules.czarPlaysUpTo" />
+                    <span matSuffix>players</span>
+                    <mat-hint>The czar will play an answer if there are less players</mat-hint>
+                </mat-form-field>
+            </div>
+            <div class="form-field-row">
+                <mat-form-field appearance="outline">
+                    <mat-label>Czar is...</mat-label>
+                    <mat-select [(ngModel)]="gameRules.czarIs">
+                        <mat-option value="a-player">A player</mat-option>
+                        <mat-option value="the-players">The players</mat-option>
+                        <mat-option value="the-audience">The audience</mat-option>
+                    </mat-select>
+                    <mat-hint>
+                        <ng-container *ngIf="gameRules.czarIs === 'a-player'">
+                            Players will take turns being the Czar
+                        </ng-container>
+                        <ng-container *ngIf="gameRules.czarIs === 'the-players'">
+                            All players vote, answer with the most votes wins
+                        </ng-container>
+                        <ng-container *ngIf="gameRules.czarIs === 'the-audience'">
+                            Audience members vote, answer with the most votes wins
+                        </ng-container>
+                    </mat-hint>
+                </mat-form-field>
 
-    <h2>Decks</h2>
+                <mat-form-field appearance="outline">
+                    <mat-label>A leaving player will...</mat-label>
+                    <mat-select [(ngModel)]="gameRules.leavingPlayerWill">
+                        <mat-option value="keep-hand">Keep hand</mat-option>
+                        <mat-option value="lose-hand">Lose hand</mat-option>
+                        <mat-option value="return-hand">Return hand</mat-option>
+                    </mat-select>
+                    <mat-hint>
+                        <ng-container *ngIf="gameRules.leavingPlayerWill === 'keep-hand'">
+                            Player keeps previous hand when returning
+                        </ng-container>
+                        <ng-container *ngIf="gameRules.leavingPlayerWill === 'lose-hand'">
+                            The player's cards are discarded until the next reshuffle
+                        </ng-container>
+                        <ng-container *ngIf="gameRules.leavingPlayerWill === 'return-hand'">
+                            The player's cards are shuffled into the deck of available cards
+                        </ng-container>
+                    </mat-hint>
+                </mat-form-field>
+            </div>
+            <br/>
+            <br/>
+            <mat-checkbox [(ngModel)]="gameRules.czarCanDeclareADraw">Czar can declare a draw</mat-checkbox>
+    
+        </mat-tab>
+        <mat-tab label="Deck">
+            <div class="deck-search">
+                <mat-form-field appearance="outline">
+                    <span matPrefix>
+                        <mat-icon>search</mat-icon>
+                    </span>
+                    <mat-label>Search</mat-label>
+                    <input matInput [(ngModel)]="deckSearch" />
+                    <span matSuffix *ngIf="deckSearch">
+                        <button mat-icon-button (click)="deckSearch = ''">
+                            <mat-icon>clear</mat-icon>
+                        </button>
+                    </span>
+                </mat-form-field>
+                <mat-checkbox [(ngModel)]="checkAll">
+                    All
+                </mat-checkbox>
+            </div>
 
-    <button mat-button (click)="enableAllDecks()" [disabled]="!isHost">
-        Enable All
-    </button>
+            <div class="empty-state" *ngIf="filteredDecks.length === 0">
+                <h2>No matching decks</h2>
+                <p>Try changing your search.</p>
+            </div>
 
-    <button mat-button (click)="disableAllDecks()" [disabled]="!isHost">
-        Disable All
-    </button>
-
-    <mat-form-field appearance="outline">
-        <span matPrefix>
-            <mat-icon>search</mat-icon>
-        </span>
-        <mat-label>Search</mat-label>
-        <input matInput [(ngModel)]="deckSearch" />
-        <span matSuffix *ngIf="deckSearch">
-            <button mat-icon-button>
-                <mat-icon>clear</mat-icon>
-            </button>
-        </span>
-    </mat-form-field>
-
-    <ng-container *ngFor="let deck of filteredDecks">
-        <div>
-            <mat-checkbox [checked]="isDeckEnabled(deck)" (change)="enableDeck(deck, $event.checked)" [disabled]="!isHost">
-                {{deck.name}} [{{deck.promptCount}} black cards, {{deck.answerCount}} white cards]
-            </mat-checkbox>
-        </div>
-    </ng-container>
+            <div class="decks">
+                <ng-container *ngFor="let deck of filteredDecks">
+                    <div class="deck">
+                        <mat-checkbox [checked]="isDeckEnabled(deck)" (change)="enableDeck(deck, $event.checked)" [disabled]="!isHost" [matTooltip]="deck.name">
+                            {{deck.name}}
+                        </mat-checkbox>
+                        <br/>
+                        <div class="info">
+                            {{deck.promptCount}} black cards, {{deck.answerCount}} white cards
+                        </div>
+                    </div>
+                </ng-container>
+            </div>
+        </mat-tab>
+    </mat-tab-group>
 
     <br/>
     <mat-divider></mat-divider>
     <br/>
 
-    <button mat-raised-button color="primary" (click)="save()" [disabled]="!isHost">
-        Save &amp; Apply
-    </button>
+    <div class="buttons">
+        <button mat-raised-button color="primary" (click)="save()" [disabled]="!isHost">
+            Save &amp; Apply
+        </button>
 
-    &nbsp;
-    Warning! The current round may be lost!
+        <p>
+            Warning! The current round may be lost!
+        </p>
+    </div>
 </ng-container>

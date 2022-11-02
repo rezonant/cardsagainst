@@ -81,7 +81,10 @@ export class AppComponent implements OnInit {
   }
 
   showSettings() {
-    this.matDialog.open(SettingsComponent);
+    this.matDialog.open(SettingsComponent, {
+      maxWidth: '100vw',
+      maxHeight: '100vh'
+    });
   }
 
   invite() {

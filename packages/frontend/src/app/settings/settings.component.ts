@@ -71,6 +71,15 @@ export class SettingsComponent {
             return;
         }
 
+        try {
+            await this.game.playerSession.setGameRules(this.gameRules);
+        } catch (e) {
+            console.error(`Failed to set g ame rules:`);
+            console.error(e);
+            alert(e.message);
+            return;
+        }
+
         this.matDialogRef.close();
         this.matSnackBar.open(`Game settings have been updated.`, undefined, {
             duration: 3000
@@ -91,5 +100,24 @@ export class SettingsComponent {
 
     disableAllDecks() {
         this.enabledDecks = [];
+    }
+
+    private _checkAll = false;
+    get checkAll() {
+        return this._checkAll;
+    }
+
+    set checkAll(value) {
+        if (value) {
+            this.enableAllDecks();
+        } else {
+            this.disableAllDecks();
+        }
+
+        this._checkAll = value;
+    }
+
+    close() {
+        this.matDialogRef.close();
     }
 }

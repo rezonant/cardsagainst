@@ -286,6 +286,13 @@ export class GameComponent {
     get winningMessage() {
         if (!this.round)
             return '';
+
+        if (!this.round.winner && this.round.winningAnswer)
+            return `The house won!`;
+        
+        if (!this.round.winningAnswer)
+            return `It's a draw!`;
+        
         return this.round.winner.id === this.playerId ? `You won!` : `${this.round.winner.displayName} won!`;
     }
 

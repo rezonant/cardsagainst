@@ -186,12 +186,27 @@ export class Session extends Interface.Session {
             let unansweredPlayers = this.players.filter(x => !this.hasAnswered(x));
 
             if (this.round.phase === 'answering' && unansweredPlayers.length === 0) {
-                this.round.phase = 'judging';
-                this._roundChanged.next(this.round);
+                this.enterJudgingPhase();
             }
 
             this._roundChanged.next(this.round);
         }
+    }
+
+    enterJudgingPhase() {    
+        while (this.round.answers.length < this.gameRules.housePlaysUpTo) {
+            console.log(`[CAH] Adding house answer...`);
+            let answer: PendingAnswer = {
+                answerCards: this.dealCards(this.round.pick),
+                player: null,
+                id: uuid()
+            };
+            this.pendingAnswers.push(answer);
+            this.round.answers.push({ id: answer.id, answerCards: answer.answerCards.map(x => ({ id: '', text: '', deck: <Interface.Deck>{ id: '',  name: '' } })) });
+        }
+
+        this.round.phase = 'judging';
+        this._roundChanged.next(this.round);
     }
 
     startNextRound(player: PlayerSession) {
@@ -253,7 +268,7 @@ export class Session extends Interface.Session {
         this._roundChanged.next(this.round);
 
         for (let player of this.players)
-            this.dealCards(player);
+            this.dealCardsToPlayer(player);
     }
 
     async playerIsLeaving(player: PlayerSession) {
@@ -277,7 +292,7 @@ export class Session extends Interface.Session {
 
         let pendingAnswer = this.pendingAnswers.find(x => x.id === answer.id);
         this.round.phase = 'finished';
-        this.round.winner = pendingAnswer.player.player;
+        this.round.winner = pendingAnswer.player?.player;
         this.round.winningAnswer = answer;
         this._roundChanged.next(this.round);
     }
@@ -301,8 +316,7 @@ export class Session extends Interface.Session {
 
         if (unansweredPlayers.length === 0) {
             console.log(`[CAH] Entering judging period.`);
-            this.round.phase = 'judging';
-            this._roundChanged.next(this.round);
+            this.enterJudgingPhase();
         } else {
             console.log(`[CAH] Waiting on ${unansweredPlayers.length} players (${unansweredPlayers.map(x => x.player.displayName).join(', ')})`);
         }
@@ -324,7 +338,7 @@ export class Session extends Interface.Session {
 
         if (!session) {
             session = new PlayerSession(this, { id, displayName });
-            this.dealCards(session);
+            this.dealCardsToPlayer(session);
             this.playerMap.set(id, session);
             console.log(`[Game ${this.id}] Player ${id} ("${displayName}") has joined.`);
         } else {
@@ -348,15 +362,35 @@ export class Session extends Interface.Session {
 
     availableAnswerCards: Interface.AnswerCard[];
 
-    dealCards(player: PlayerSession) {
+    dealCards(count: number) {
+        let cards = [];
+        while (cards.length < count)
+            cards.push(this.dealCard());
+
+        return cards;
+    }
+
+    dealCard() {
+        if (this.availableAnswerCards.length === 0)
+            this.availableAnswerCards = this.service.availableAnswers.slice();
+
+        let deck = this.availableAnswerCards.filter(x => this.isDeckEnabledById(x.deck.id));
+        let deckIndex = Math.random() * deck.length | 0;
+        let card = deck[deckIndex];
+
+        if (!card)
+            throw new Error(`Failed to deal a card even after reshuffling! The deck must not have any answer cards!`);
+
+        let poolIndex = this.availableAnswerCards.indexOf(card);
+        this.availableAnswerCards.splice(poolIndex, 1);
+
+        return card;
+    }
+
+    dealCardsToPlayer(player: PlayerSession) {
         let dealt = 0;
         while (player.answerCards.length < 10) {
-            let deck = this.availableAnswerCards.filter(x => this.isDeckEnabledById(x.deck.id));
-            let deckIndex = Math.random() * deck.length | 0;
-            let card = deck[deckIndex];
-            let poolIndex = this.availableAnswerCards.indexOf(card);
-            this.availableAnswerCards.splice(poolIndex, 1);
-            
+            let card = this.dealCard();
             player.addCard(card);
             dealt += 1;
         }
@@ -418,7 +452,7 @@ export class Session extends Interface.Session {
             let returned = player.answerCards.filter(x => !this.isDeckEnabledById(x.deck.id));
             this.availableAnswerCards.push(...returned);
             player.answerCards = player.answerCards.filter(x => this.isDeckEnabledById(x.deck.id));
-            this.dealCards(player);
+            this.dealCardsToPlayer(player);
         }
 
         if (this.round?.promptDeck?.id && !this.isDeckEnabledById(this.round.promptDeck.id)) {

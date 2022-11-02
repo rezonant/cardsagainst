@@ -1,0 +1,92 @@
+:host {
+    position: relative;
+}
+
+h2 {
+    margin-top: 2em;
+}
+
+.form-field-row {
+    display: flex;
+    gap: 1em;
+    margin-bottom: 1em;
+
+    & > * {
+        flex-grow: 1;
+    }
+
+    @media (max-width: 475px) {
+        flex-direction: column;
+        margin-top: 1em;
+        & > * {
+            width: 100%;
+        }
+    }
+}
+
+mat-tab-group {
+    max-height: 65vh;
+}
+
+.decks {
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: calc(100% - 6em);
+    width: 100%;
+}
+
+.deck {
+    margin-bottom: 1em;
+    max-width: 100vw;
+
+    .info {
+        color: #777;
+    }
+
+    mat-checkbox {
+        max-width: 100%;
+        ::ng-deep {
+            .mat-checkbox-layout {
+                width: 100%;
+            }
+            .mat-checkbox-label {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+        }
+    }
+}
+
+.deck-search {
+    display: flex;
+    align-items: baseline;
+    mat-form-field {
+        flex-grow: 1;
+    }
+}
+
+.empty-state {
+    text-align: center;
+    color: #ccc;
+    h2, p {
+        color: inherit;
+    }
+}
+
+.buttons {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+
+    p {
+        display: block;
+        margin: 0;
+    }
+}
+
+a.close {
+    position: absolute;
+    right: -10px;
+    top: -10px;
+}
